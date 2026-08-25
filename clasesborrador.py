@@ -11,17 +11,9 @@ from enum import Enum
 # Enums
 # ---------------------------------------------------------------------------
 
-class EstadoLote(Enum):
-    EN_PRODUCCION = "EN_PRODUCCION"
-    APROBADO = "APROBADO"
-    RECHAZADO = "RECHAZADO"
 
 
-class EstadoMuestra(Enum):
-    PENDIENTE = "PENDIENTE"
-    EN_INSPECCION = "EN_INSPECCION"
-    CONFORME = "CONFORME"
-    NO_CONFORME = "NO_CONFORME"
+
 
 
 # ---------------------------------------------------------------------------
