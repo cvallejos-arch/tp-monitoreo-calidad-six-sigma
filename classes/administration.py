@@ -1,11 +1,12 @@
+
 class Administrador:
     def __init__(self):
-        self._lotes = []
-        self._muestras = []
-        self._profesionales = []
-        self._equipos = []
-        self._procedimientos = []
-        self._inspecciones = []
+        self._lotes = {}
+        self._muestras = {}
+        self._profesionales = {}
+        self._equipos = {}
+        self._procedimientos = {}
+        self._inspecciones = {}
 
     def registrar_lote(self, id, cantidad):
         pass
@@ -24,9 +25,3 @@ class Administrador:
 
     def lanzar_inspeccion(self, muestra, profesional, equipo, procedimiento, fecha):
         pass
-
-
-
-if __name__ == "__main__":
-    main()
-

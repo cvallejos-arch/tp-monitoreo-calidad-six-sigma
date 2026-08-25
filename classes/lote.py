@@ -1,5 +1,5 @@
-import classes.muestra from Muestra
-#import EstadoLote from estado_lote.py
+from classes.muestra import Muestra
+from classes.estado_lote import EstadoLote
 
 class Lote:
     def __init__(self, id, cantidad_fabricada):
