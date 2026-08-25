@@ -1,3 +1,5 @@
-# esta clase va a contener todas las funciones utilitarias compartidas por mas de una clase.
-# Ej: validar_cantidad(cantidad):
+def validar_entero(numero):
+    return isinstance(numero, int)
 
+def validar_cantidad(cantidad):
+    return ()

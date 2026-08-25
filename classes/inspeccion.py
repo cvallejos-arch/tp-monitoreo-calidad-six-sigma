@@ -1,4 +1,3 @@
-
 class Inspeccion:
     def __init__(self, id, muestra, profesional, equipo, procedimiento, fecha):
         self._id = id
