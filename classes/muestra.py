@@ -1,3 +1,5 @@
+from classes.estado_muestra import EstadoMuestra
+
 class Muestra:
     def __init__(self, id, cantidad, lote_id):
         self._id = id
