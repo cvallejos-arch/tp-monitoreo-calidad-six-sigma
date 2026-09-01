@@ -2,14 +2,18 @@ from classes.muestra import Muestra
 from classes.estado_lote import EstadoLote
 
 class Lote:
-    def __init__(self, id, cantidad_fabricada):
+    def __init__(self, id, _nombre_componentes, cantidad_fabricada):
         self._id = id
+        self._nombre_componentes = _nombre_componentes
         self._cantidad_fabricada = cantidad_fabricada
         self._estado = EstadoLote.EN_PRODUCCION
         self._muestras = []
 
     def get_id(self):
         return self._id
+
+    def get_nombre_lote(self):
+        return self._nombre_componentes
 
     def get_cantidad_fabricada(self):
         return self._cantidad_fabricada
