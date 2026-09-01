@@ -1,6 +1,6 @@
 #para importar en las clases se usa:
 """
-from dominio.excepciones import (
+from excepciones import (
     EquipoNoAptoException,
     CertificacionFaltanteException,
     TransicionIlegalException
