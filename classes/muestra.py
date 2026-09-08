@@ -1,13 +1,13 @@
 from classes.estado_muestra import EstadoMuestra
-from classes.validacion import validar_texto_no_vacio, validar_entero_positivo
+from classes.validacion import validar_cantidad
 from classes.excepciones import TransicionIlegalError
 from classes.reporte import Reporte
-
+import uuid
 
 class Muestra:
-    def __init__(self, id, cantidad):
+    def __init__(self, cantidad):
         self._id = uuid.uuid4()
-        self._cantidad = validar_entero_positivo(cantidad, "cantidad")
+        self._cantidad = validar_cantidad(cantidad)
         self._estado = EstadoMuestra.PENDIENTE
         self._defectos = []
         self._lote_id = None
@@ -79,7 +79,7 @@ class Muestra:
                 "' está en estado" + self._estado.value + ", se espera EN_INSPECCION."
             )
 
-        if self.tiene_critico() or self.suma_gravedades() > limite_gravedad
+        if self.tiene_critico() or self.suma_gravedades() > limite_gravedad:
             self._estado = EstadoMuestra.NO_CONFORME
         else:
             self._estado = EstadoMuestra.CONFORME
