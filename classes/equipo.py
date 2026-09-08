@@ -1,11 +1,11 @@
 from validacion import validar_id, validar_texto
+import uuid
 
 class Equipo:
-    def __init__(self, id, categoria, fecha_calibracion):
-        validar_id(id)
+    def __init__(self, categoria, fecha_calibracion):
         validar_texto(categoria, "La categoría")
 
-        self._id = id
+        self._id = uuid.uuid4()
         self._categoria = categoria
         self._fecha_calibracion = fecha_calibracion
 

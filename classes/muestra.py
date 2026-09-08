@@ -1,8 +1,9 @@
 from classes.estado_muestra import EstadoMuestra
+import uuid
 
 class Muestra:
-    def __init__(self, id, cantidad, lote_id):
-        self._id = id
+    def __init__(self, cantidad, lote_id):
+        self._id = uuid.uuid4()
         self._cantidad = cantidad
         self._estado = EstadoMuestra.PENDIENTE
         self._defectos = []

@@ -1,6 +1,7 @@
+import uuid
 class Procedimiento:
-    def __init__(self, id, limite_gravedad_acumulada, categoria_equipo_requerida, certificacion_requerida=None):
-        self._id = id
+    def __init__(self, limite_gravedad_acumulada, categoria_equipo_requerida, certificacion_requerida=None):
+        self._id = uuid.uuid4()
         self._limite_gravedad_acumulada = limite_gravedad_acumulada
         self._categoria_equipo_requerida = categoria_equipo_requerida
         self._certificacion_requerida = certificacion_requerida

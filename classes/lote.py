@@ -1,9 +1,10 @@
 from classes.muestra import Muestra
 from classes.estado_lote import EstadoLote
+import uuid
 
 class Lote:
-    def __init__(self, id, _nombre_componentes, cantidad_fabricada):
-        self._id = id
+    def __init__(self, _nombre_componentes, cantidad_fabricada):
+        self._id = uuid.uuid4()
         self._nombre_componentes = _nombre_componentes
         self._cantidad_fabricada = cantidad_fabricada
         self._estado = EstadoLote.EN_PRODUCCION
