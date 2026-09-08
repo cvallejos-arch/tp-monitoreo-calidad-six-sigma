@@ -1,9 +1,8 @@
-from validacion import validar_id, validar_texto
+from validacion import validar_texto
 
 class Equipo:
     def __init__(self, id, categoria, fecha_calibracion):
-        validar_id(id)
-        validar_texto(categoria, "La categoría")
+        validar_texto(categoria)
 
         self._id = id
         self._categoria = categoria
