@@ -1,7 +1,10 @@
-from datetime import timedelta
+from validacion import validar_id, validar_texto
 
 class Equipo:
     def __init__(self, id, categoria, fecha_calibracion):
+        validar_id(id)
+        validar_texto(categoria, "La categoría")
+
         self._id = id
         self._categoria = categoria
         self._fecha_calibracion = fecha_calibracion
@@ -16,9 +19,7 @@ class Equipo:
         return self._fecha_calibracion
 
     def esta_calibrado(self, fecha):
-        limite = fecha - timedelta(days=182)
-        return limite <= self._fecha_calibracion <= fecha
+        return 0 <= (fecha - self._fecha_calibracion).days <= 182
 
     def es_compatible(self, categoria_requerida):
         return self._categoria == categoria_requerida
-    

@@ -1,5 +1,11 @@
+from validacion import validar_texto, validar_gravedad
+
 class Defecto:
     def __init__(self, tipo, descripcion, gravedad):
+        validar_texto(tipo, "El tipo")
+        validar_texto(descripcion, "La descripción")
+        validar_gravedad(gravedad)
+
         self._tipo = tipo
         self._descripcion = descripcion
         self._gravedad = gravedad
@@ -14,7 +20,11 @@ class Defecto:
         return self._gravedad
 
     def es_critico(self):
-        pass
+        return self._gravedad == 5
 
     def copia(self):
-        pass
+        return Defecto(
+            self._tipo,
+            self._descripcion,
+            self._gravedad
+        )
