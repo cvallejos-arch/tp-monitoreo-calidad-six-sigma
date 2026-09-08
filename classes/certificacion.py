@@ -14,3 +14,4 @@ class Certificacion:
 
     def es_vigente(self, fecha):
         return self._fecha_inicio <= fecha <= self._fecha_fin
+    

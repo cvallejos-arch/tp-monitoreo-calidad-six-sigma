@@ -23,3 +23,4 @@ class Equipo:
 
     def es_compatible(self, categoria_requerida):
         return self._categoria == categoria_requerida
+    

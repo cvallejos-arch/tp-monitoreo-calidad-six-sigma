@@ -28,3 +28,4 @@ class Defecto:
             self._descripcion,
             self._gravedad
         )
+        
