@@ -1,6 +1,8 @@
+import uuid
+
 class Profesional:
-    def __init__(self, id, nombre):
-        self._id = id
+    def __init__(self, nombre):
+        self._id = uuid.uuid4()
         self._nombre = nombre
         self._certificaciones = []
 
