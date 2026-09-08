@@ -1,4 +1,4 @@
-class Administrador:
+class Empresa:
     def __init__(self):
         self._lotes = []
         self._muestras = []
