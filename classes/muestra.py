@@ -79,7 +79,7 @@ class Muestra:
                 "' está en estado" + self._estado.value + ", se espera EN_INSPECCION."
             )
 
-        if self.tiene_critico() or self.suma_gravedades() > limite_gravedad
+        if self.tiene_critico() or self.suma_gravedades() > limite_gravedad:
             self._estado = EstadoMuestra.NO_CONFORME
         else:
             self._estado = EstadoMuestra.CONFORME
