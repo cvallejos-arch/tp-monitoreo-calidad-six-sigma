@@ -22,3 +22,7 @@ def validar_texto(texto, nombre_campo):
     if not isinstance(texto, str) or texto.strip() == "":
         raise ValueError(f"{nombre_campo} no puede estar vacío")
 
+
+def validar_rango_fechas(fecha_inicio, fecha_fin):
+    if fecha_inicio > fecha_fin:
+        raise ValueError("La fecha de inicio no puede ser posterior a la fecha de fin")
