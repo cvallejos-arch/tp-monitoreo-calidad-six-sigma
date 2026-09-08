@@ -8,9 +8,10 @@ class Lote:
         self._id = uuid.uuid4()
         self._nombre_componentes = _nombre_componentes
 
-        #validar atributos
-
-        self._cantidad_fabricada = cantidad_fabricada
+        #validar atributos y definirlos
+        if validar_cantidad(self._cantidad_fabricada):
+            self._cantidad_fabricada = cantidad_fabricada
+    
         self._estado = EstadoLote.EN_PRODUCCION
         self._muestras = []
 
@@ -30,7 +31,8 @@ class Lote:
         return self._muestras
 
     def agregar_muestra(self, muestra):
-        pass
+        if isinstance(muestra, Muestra):
+            self._muestras.append(muestra)
 
     def decidir(self):
         pass
