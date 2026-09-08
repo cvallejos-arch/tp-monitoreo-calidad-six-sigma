@@ -16,11 +16,16 @@ def validar_fecha(fecha_str, formato="%d/%m/%Y"):
         # Si el formato o la fecha son inválidos
         return False
 
-def validar_texto(texto, nombre_campo):
-    if not isinstance(texto, str) or texto.strip() == "":
-        raise ValueError(f"{nombre_campo} no puede estar vacío")
+
 
 def validar_rango_fechas(fecha_inicio, fecha_fin):
     if fecha_inicio > fecha_fin:
         raise ValueError("La fecha de inicio no puede ser posterior a la fecha de fin")
     
+
+def validar_texto(texto):
+    if not isinstance(texto, str) or texto.strip() == "":
+        raise ValueError("El texto no puede estar vacío")
+
+    if not texto.replace(" ", "").isalpha():
+        raise ValueError("El texto solo puede contener letras")

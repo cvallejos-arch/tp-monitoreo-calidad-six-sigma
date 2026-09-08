@@ -2,8 +2,8 @@ from validacion import validar_texto, validar_gravedad
 
 class Defecto:
     def __init__(self, tipo, descripcion, gravedad):
-        validar_texto(tipo, "El tipo")
-        validar_texto(descripcion, "La descripción")
+        validar_texto(tipo)
+        validar_texto(descripcion)
         validar_gravedad(gravedad)
 
         self._tipo = tipo
