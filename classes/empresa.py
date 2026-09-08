@@ -14,7 +14,7 @@ class Empresa:
             raise ValueError('El argumento debe ser instancia de Lote.')
         self._lotes.append(lote)
 
-    def registrar_muestra(self, id, cantidad):
+    def registrar_muestra(self, muestra):
         pass
 
     def registrar_profesional(self, id, nombre):
