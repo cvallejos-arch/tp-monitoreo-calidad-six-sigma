@@ -33,16 +33,6 @@ class Empresa:
         inspeccion = Inspeccion()
         self._inspecciones.append(inspeccion)
 
-
-
-
     def lanzar_inspeccion(self, muestra, profesional, equipo, procedimiento, fecha):
         pass
 
-
-if __name__ == "__main__":
-    main()
-
-# dentro del main()
-Tech_2 = Empresa()
-Tech_2.registrar_lote
