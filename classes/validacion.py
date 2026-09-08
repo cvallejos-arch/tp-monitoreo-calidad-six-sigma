@@ -5,7 +5,7 @@ def validar_entero(numero):
 
 def validar_cantidad(cantidad):
     validar_entero(cantidad)
-    return (cantidad > 0)
+    return (cantidad >= 0)
 
 def validar_fecha(fecha_str, formato="%d/%m/%Y"):
     try:
