@@ -1,17 +1,8 @@
-<<<<<<< HEAD
-from validacion import validar_id, validar_texto
-import uuid
-
-class Equipo:
-    def __init__(self, categoria, fecha_calibracion):
-        validar_texto(categoria, "La categoría")
-=======
 from validacion import validar_texto
 
 class Equipo:
     def __init__(self, id, categoria, fecha_calibracion):
         validar_texto(categoria)
->>>>>>> d6b8e214f84af8386ad26841bbccc3f7bec4924b
 
         self._id = uuid.uuid4()
         self._categoria = categoria
