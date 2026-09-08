@@ -97,7 +97,7 @@ Dado que es un sistema Core sin UI, la ejecucion se realiza corriendo el flujo p
    ```
 
 ---
-## Diagrama Mermaid 
+## Diagrama 
 
 ```mermaid
 classDiagram

@@ -17,6 +17,7 @@ class Profesional:
 
     def tiene_certificacion_vigente(self, nombre, fecha):
         pass
+    
     def __str__(self):
         return f'ID: {self._id}; Nombre: {self._nombre}'
 

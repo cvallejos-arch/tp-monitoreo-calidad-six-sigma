@@ -1,6 +1,8 @@
+import uuid
+
 class Inspeccion:
-    def __init__(self, id, muestra, profesional, equipo, procedimiento, fecha):
-        self._id = id
+    def __init__(self, muestra, profesional, equipo, procedimiento, fecha):
+        self._id = uuid.uuid4()
         self._muestra = muestra
         self._profesional = profesional
         self._equipo = equipo
