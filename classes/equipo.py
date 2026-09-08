@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 class Equipo:
     def __init__(self, id, categoria, fecha_calibracion):
         self._id = id
@@ -14,7 +16,9 @@ class Equipo:
         return self._fecha_calibracion
 
     def esta_calibrado(self, fecha):
-        pass
+        limite = fecha - timedelta(days=182)
+        return limite <= self._fecha_calibracion <= fecha
 
     def es_compatible(self, categoria_requerida):
-        pass
+        return self._categoria == categoria_requerida
+    

@@ -6,3 +6,7 @@ def validar_cantidad(cantidad):
 
 def validar_fecha(fecha):
     
+
+def validar_texto(texto, nombre_campo):
+    if not isinstance(texto, str) or texto.strip() == "":
+        raise ValueError(f"{nombre_campo} no puede estar vacío")
