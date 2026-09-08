@@ -27,5 +27,4 @@ class Defecto:
             self._tipo,
             self._descripcion,
             self._gravedad
-        )
-        
+        )     
