@@ -1,12 +1,20 @@
+from datetime import datetime
+
 def validar_entero(numero):
     return isinstance(numero, int)
 
 def validar_cantidad(cantidad):
-    return ()
+    validar_entero(cantidad)
+    return (cantidad > 0)
 
-def validar_fecha(fecha):
-    
+def validar_fecha(fecha_str, formato="%d/%m/%Y"):
+    try:
+        # Intenta parsear la cadena usando el formato especificado
+        fecha_obj = datetime.strptime(fecha_str, formato)
+        return True
+    except ValueError:
+        # Si el formato o la fecha son inválidos
+        return False
 
-def validar_texto(texto, nombre_campo):
-    if not isinstance(texto, str) or texto.strip() == "":
-        raise ValueError(f"{nombre_campo} no puede estar vacío")
+print(validar_fecha('11/21/2024'))
+
