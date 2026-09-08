@@ -18,3 +18,7 @@ def validar_fecha(fecha_str, formato="%d/%m/%Y"):
 
 print(validar_fecha('11/21/2024'))
 
+def validar_texto(texto, nombre_campo):
+    if not isinstance(texto, str) or texto.strip() == "":
+        raise ValueError(f"{nombre_campo} no puede estar vacío")
+
