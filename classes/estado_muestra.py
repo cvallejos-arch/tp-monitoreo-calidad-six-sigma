@@ -4,3 +4,4 @@ class EstadoMuestra(Enum):
     EN_INSPECCION = "EN_INSPECCION"
     CONFORME = "CONFORME"
     NO_CONFORME = "NO_CONFORME"
+    
