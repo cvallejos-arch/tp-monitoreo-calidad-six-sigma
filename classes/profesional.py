@@ -1,6 +1,8 @@
+import uuid
+
 class Profesional:
-    def __init__(self, id, nombre):
-        self._id = id
+    def __init__(self, nombre):
+        self._id = uuid.uuid4()
         self._nombre = nombre
         self._certificaciones = []
 
@@ -15,3 +17,8 @@ class Profesional:
 
     def tiene_certificacion_vigente(self, nombre, fecha):
         pass
+    def __str__(self):
+        return f'ID: {self._id}; Nombre: {self._nombre}'
+
+P = Profesional('Martin P')
+print(P)
