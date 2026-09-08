@@ -1,3 +1,5 @@
+from lote import Lote
+
 class Empresa:
     def __init__(self):
         self._lotes = []
@@ -7,8 +9,10 @@ class Empresa:
         self._procedimientos = []
         self._inspecciones = []
 
-    def registrar_lote(self, id, cantidad):
-        pass
+    def registrar_lote(self, lote):
+        if isinstance(lote, Lote):
+            raise ValueError('El argumento debe ser instancia de Lote.')
+        self._lotes.append(lote)
 
     def registrar_muestra(self, id, cantidad):
         pass
