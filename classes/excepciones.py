@@ -1,11 +1,12 @@
 #para importar en las clases se usa:
-"""
+
 from excepciones import (
     EquipoNoAptoException,
     CertificacionFaltanteException,
-    TransicionIlegalException
+    TransicionIlegalException,
+    DatoInvalidoException
 )
-"""
+
 
 
 class CalidadException(Exception):
@@ -15,20 +16,25 @@ class CalidadException(Exception):
 
 
 class DatoInvalidoException(CalidadException):
-    """Para errores en IDs vacíos, números <= 0 o gravedades fuera de rango [1, 5]."""
-    pass
+    """Para errores números <= 0 o gravedades fuera de rango [1, 5]."""
+    def __init__(self, mensaje: str = "El dato ingresado es invalido" ):
+        super().__init__(mensaje)
 
 
 class EquipoNoAptoException(CalidadException):
     """Para discrepancia de categoría o calibración vencida (>182 días)."""
-    pass
+    def __init__(self, mensaje:str = "El equipo no es apto para la insepeccion solicitada"):
+        super().__init__(mensaje)
+
 
 
 class CertificacionFaltanteException(CalidadException):
     """Para profesional no certificado o certificación vencida."""
-    pass
+    def __init__(self, mensaje: str = "El profesional no cuenta con la certificacion requerida o vigente"):
+        super().__init__(mensaje)
 
 
 class TransicionIlegalException(CalidadException):
     """Para modificaciones a muestras o lotes cerrados."""
-    pass
+    def __init__(self, mensaje: str = "No se puede realizar otra transicion de estado"):
+        super().__init__(mensaje)
