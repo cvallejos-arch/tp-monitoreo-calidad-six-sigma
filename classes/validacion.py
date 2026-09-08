@@ -3,3 +3,6 @@ def validar_entero(numero):
 
 def validar_cantidad(cantidad):
     return ()
+
+def validar_fecha(fecha):
+    
