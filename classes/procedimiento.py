@@ -3,22 +3,22 @@ import uuid
 
 class Procedimiento:
     def __init__(self, limite_gravedad_acumulada, categoria_equipo_requerida, certificacion_requerida=None):
-        self._id = uuid.uuid4()
-        self._limite_gravedad_acumulada = limite_gravedad_acumulada
-        self._categoria_equipo_requerida = categoria_equipo_requerida
-        self._certificacion_requerida = certificacion_requerida
+          self._id = uuid.uuid4()
+          self._limite_gravedad_acumulada = limite_gravedad_acumulada
+          self._categoria_equipo_requerida = categoria_equipo_requerida
+          self._certificacion_requerida = certificacion_requerida
 
     def get_id(self):
-        return self._id
+          return self._id
 
     def get_limite_gravedad_acumulada(self):
-        return self._limite_gravedad_acumulada
+          return self._limite_gravedad_acumulada
 
     def get_categoria_equipo_requerida(self):
-        return self._categoria_equipo_requerida
+          return self._categoria_equipo_requerida
 
     def get_certificacion_requerida(self):
-        return self._certificacion_requerida
+          return self._certificacion_requerida
 
     def evaluar(self, observaciones):
-        raise NotImplementedError("Se implementa en las subclases")
+          raise NotImplementedError("Se implementa en las subclases")
