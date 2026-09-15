@@ -1,8 +1,45 @@
+from datetime import date
+
+from classes.estado_muestra import EstadoMuestra
+from classes.excepciones import (
+    CertificacionNoVigenteError,
+    DatosInvalidosError,
+    EquipoNoAptoError,
+    TransicionIlegalError,
+    InspeccionInvalidaError,
+)
+
+
 import uuid
 
 class Inspeccion:
     def __init__(self, muestra, profesional, equipo, procedimiento, fecha):
         self._id = uuid.uuid4()
+
+        if not isinstance(fecha, date):
+            raise DatosInvalidosError(
+                "La fecha de la inspección debe ser un objeto de tipo 'date'."
+            )
+
+        if muestra.estado != EstadoMuestra.PENDIENTE:
+            raise TransicionIlegalError(
+                "La muestra '" + muestra.id + "' no está en estado PENDIENTE."
+            )
+
+        cert_requerida = procedimiento.get_certificacion_requerida()
+        if cert_requerida is not None and not profesional.tiene_certificacion(cert_requerida, fecha):
+            raise CertificacionNoVigenteError(
+                "El profesional '" + profesional.get_id() +
+                "' no tiene la certificación requerida '" + cert_requerida +
+                "' vigente a la fecha" + str(fecha) + "."
+            )
+
+        if not equipo.es_compatible_con_procedimiento(procedimiento.categoria_equipo_requerida):
+            raise EquipoNoAptoError(
+                "El equipo '" + equipo.get_id() +
+                "' no es compatible con el procedimiento '" + procedimiento.get_id() + "'."
+            )
+
         self._muestra = muestra
         self._profesional = profesional
         self._equipo = equipo
@@ -11,25 +48,32 @@ class Inspeccion:
         self._defectos = []
         self._cerrada = False
 
-    def get_id(self):
+    @property
+    def id(self):
         return self._id
 
-    def get_muestra_id(self):
+    @property
+    def muestra_id(self):
         return self._muestra.get_id()
 
-    def get_profesional_id(self):
+    @property
+    def profesional_id(self):
         return self._profesional.get_id()
 
-    def get_equipo_id(self):
+    @property
+    def equipo_id(self):
         return self._equipo.get_id()
 
-    def get_procedimiento_id(self):
+    @property
+    def procedimiento_id(self):
         return self._procedimiento.get_id()
 
-    def get_fecha(self):
+    @property
+    def fecha(self):
         return self._fecha
 
-    def get_defectos(self):
+    @property
+    def defectos(self):
         return self._defectos
 
     def ejecutar(self, observaciones):
