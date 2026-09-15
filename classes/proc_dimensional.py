@@ -28,3 +28,4 @@ class ProcedimientoDimensional(Procedimiento):
         if exceso <= 3:
             return 4
         return 5
+
