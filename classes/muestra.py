@@ -1,13 +1,13 @@
 from classes.estado_muestra import EstadoMuestra
-from classes.validacion import validar_texto_no_vacio, validar_entero_positivo
+from classes.validacion import validar_cantidad
 from classes.excepciones import TransicionIlegalError
 from classes.reporte import Reporte
-
+import uuid
 
 class Muestra:
-    def __init__(self, id, cantidad):
+    def __init__(self, cantidad):
         self._id = uuid.uuid4()
-        self._cantidad = validar_entero_positivo(cantidad, "cantidad")
+        self._cantidad = validar_cantidad(cantidad)
         self._estado = EstadoMuestra.PENDIENTE
         self._defectos = []
         self._lote_id = None
@@ -15,23 +15,23 @@ class Muestra:
         self._reporte = None
 
     @property
-    def get_id(self):
+    def id(self):
         return self._id
     
     @property
-    def get_cantidad(self):
+    def cantidad(self):
         return self._cantidad
     
     @property
-    def get_estado(self):
+    def estado(self):
         return self._estado
     
     @property
-    def get_defectos(self):
+    def defectos(self):
         return self._defectos
     
     @property
-    def get_lote_id(self):
+    def lote_id(self):
         return self._lote_id
 
     @property
@@ -39,7 +39,7 @@ class Muestra:
         return self._inspeccion
 
     @property
-    def get_reporte(self):
+    def reporte(self):
         return self._reporte
 
 #--- Gestion de la apartenencia al lote ---
@@ -58,7 +58,7 @@ class Muestra:
         if self._estado != EstadoMuestra.PENDIENTE:
             raise TransicionIlegalError(
                 "No se pudo iniciar la inspección: la muestra '" + self._id + 
-                "' está en estado" + self._estado.value + ", se espera PENDENTIE."
+                "' está en estado" + self._estado.value + ", se espera PENDIENTE."
             )
         self._estado = EstadoMuestra.EN_INSPECCION
         
