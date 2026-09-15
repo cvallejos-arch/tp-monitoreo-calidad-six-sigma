@@ -2,7 +2,9 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from classes.procedimiento import Procedimiento, ProcedimientoDimensional, ProcedimientoVisual
+from classes.procedimiento import Procedimiento
+from classes.proc_dimensional import ProcedimientoDimensional
+from classes.proc_visual import ProcedimientoVisual
 
 
 def test_creacion_procedimiento_guarda_datos():

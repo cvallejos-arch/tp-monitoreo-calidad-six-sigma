@@ -1,4 +1,6 @@
 import uuid
+
+
 class Procedimiento:
     def __init__(self, limite_gravedad_acumulada, categoria_equipo_requerida, certificacion_requerida=None):
         self._id = uuid.uuid4()
@@ -19,38 +21,4 @@ class Procedimiento:
         return self._certificacion_requerida
 
     def evaluar(self, observaciones):
-        raise NotImplementedError("Se crea en los subclases")
-        
-        
-
-
-class ProcedimientoDimensional(Procedimiento):
-    def evaluar(self, observaciones):
-        defectos = []
-        for obs in observaciones:
-            if obs.desviacion > obs.tolerancia:
-                gravedad = self._calcular_gravedad(obs)
-                defectos.append(
-                    Defecto(
-                        tipo="DIMENSIONAL",
-                        descripcion=f"Desviación dimensional de {obs.desviacion}",
-                        gravedad=gravedad
-                    )
-                )
-        return defectos 
-
-
-class ProcedimientoVisual(Procedimiento):
-    def evaluar(self, observaciones):
-        defectos = []
-        for obs in observaciones:
-            if obs.es_defecto:
-                defectos.append(Defecto(tipo="VISUAL", descripcion=obs.detalle, gravedad=obs.gravedad))
-        return defectos
-        
-
-class test(Procedimiento):
-    pass
-
-a = test()
-a.evaluar()
+        raise NotImplementedError("Se implementa en las subclases")

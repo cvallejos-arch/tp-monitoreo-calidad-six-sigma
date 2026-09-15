@@ -17,6 +17,15 @@ def validar_rango_fechas(fecha_inicio, fecha_fin):
     if fecha_inicio > fecha_fin:
         raise ValueError("La fecha de inicio no puede ser posterior a la fecha de fin")
 
+def validar_gravedad(gravedad):
+    validar_entero(gravedad)
+    if not (1 <= gravedad <= 5):
+        raise ValueError(f'{gravedad} debe estar entre 1 y 5.')
+
+def validar_descripcion(descripcion):
+    if not isinstance(descripcion, str) or descripcion.strip() == "":
+        raise ValueError("La descripción no puede estar vacía")
+
 def validar_texto(texto):
     if not isinstance(texto, str) or texto.strip() == "":
         raise ValueError("El texto no puede estar vacío")
