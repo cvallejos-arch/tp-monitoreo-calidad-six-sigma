@@ -22,6 +22,8 @@ class Lote:
     def id(self):
         return self._id
 
+    
+
     @property
     def nombre_lote(self):
         return self._nombre_componentes

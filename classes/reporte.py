@@ -8,21 +8,35 @@ class Reporte:
         self._lote_id = lote_id
         self._profesional_id = profesional_id
         self._fecha = fecha
-        self._defectos = defectos
+        self._defectos = tuple(d.copia() for d in defectos)
 
-    def get_muestra_id(self):
+    @property
+    def muestra_id(self):
         return self._muestra_id
 
-    def get_lote_id(self):
+    @property
+    def lote_id(self):
         return self._lote_id
 
-    def get_profesional_id(self):
+    @property
+    def profesional_id(self):
         return self._profesional_id
 
-    def get_fecha(self):
+    @property
+    def fecha(self):
         return self._fecha
 
-    def get_defectos(self):
+    @property
+    def defectos(self):
         return self._defectos
 
-
+def __repr__(self):
+        return (
+            "Reporte(id=" + str(self._id) +
+            ", muestra_id=" + str(self._muestra_id) +
+            ", lote_id=" + str(self._lote_id) +
+            ", profesional_id=" + str(self._profesional_id) +
+            ", fecha=" + str(self._fecha) +
+            ", defectos=" + str(self._defectos) +
+            ")"
+        )

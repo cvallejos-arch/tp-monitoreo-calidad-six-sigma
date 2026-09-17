@@ -46,7 +46,7 @@ class Muestra:
 
     def asignar_lote(self, lote_id):
         if self._lote_id is not None:
-            raise TransicionIlegalEréaq<èé&@ror(
+            raise TransicionIlegalError(
                 "La muestra '" + self._id + "' appartient déjà au lote "
                 "'" + self._lote_id + "' et ne peut pas être déplacée vers "
                 "'" + lote_id + "'."

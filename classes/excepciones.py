@@ -26,12 +26,21 @@ class EquipoNoAptoException(CalidadException):
     def __init__(self, mensaje:str = "El equipo no es apto para la insepeccion solicitada"):
         super().__init__(mensaje)
 
-
+class EquipoAptoError(CalidadException):
+    """Para equipo no apto para la inspección solicitada."""
+    def __init__(self, mensaje: str = "El equipo no es apto para la inspección solicitada"):
+        super().__init__(mensaje)
 
 class CertificacionFaltanteException(CalidadException):
     """Para profesional no certificado o certificación vencida."""
     def __init__(self, mensaje: str = "El profesional no cuenta con la certificacion requerida o vigente"):
         super().__init__(mensaje)
+
+class CertificationNoVigenteException(CalidadException):
+    """Para profesional no certificado o certificación vencida."""
+    def __init__(self, mensaje: str = "El profesional no cuenta con la certificacion requerida o vigente"):
+        super().__init__(mensaje)
+
 
 
 class TransicionIlegalException(CalidadException):

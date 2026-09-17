@@ -9,8 +9,17 @@ class Certificacion:
         self._fecha_inicio = fecha_inicio
         self._fecha_fin = fecha_fin
 
-    def get_nombre(self):
+    @property
+    def nombre(self):
         return self._nombre
+
+    @property
+    def fecha_inicio(self):
+        return self._fecha_inicio
+
+    @property
+    def fecha_fin(self):
+        return self._fecha_fin
 
     def es_vigente(self, fecha):
         return self._fecha_inicio <= fecha <= self._fecha_fin

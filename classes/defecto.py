@@ -10,13 +10,16 @@ class Defecto:
         self._descripcion = descripcion
         self._gravedad = gravedad
 
-    def get_tipo(self):
+    @property
+    def tipo(self):
         return self._tipo
 
-    def get_descripcion(self):
+    @property
+    def descripcion(self):
         return self._descripcion
 
-    def get_gravedad(self):
+    @property
+    def gravedad(self):
         return self._gravedad
 
     def es_critico(self):
