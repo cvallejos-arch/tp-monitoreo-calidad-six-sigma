@@ -8,7 +8,7 @@ class Reporte:
         self._lote_id = lote_id
         self._profesional_id = profesional_id
         self._fecha = fecha
-        self._defectos = tuple(d.copia() for d in defectos)
+        self._defectos = tuple(map(lambda d: d.copia(), defectos))
 
     @property
     def muestra_id(self):

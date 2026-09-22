@@ -8,7 +8,7 @@ class Profesional:
         validar_texto(nombre)
         self._id = uuid.uuid4()
         self._nombre = nombre
-        self._certificaciones = []
+        self._certificaciones = [] # {}?  "CONTROL_DIMENSIONAL": certificacion1,
 
     @property
     def id(self):

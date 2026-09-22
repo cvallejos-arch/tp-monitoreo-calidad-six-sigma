@@ -16,7 +16,7 @@ class Lote:
             self._cantidad_fabricada = cantidad_fabricada
     
         self._estado = EstadoLote.EN_PRODUCCION
-        self._muestras = []
+        self._muestras = {}
 
     @property
     def id(self):
