@@ -9,3 +9,4 @@ class ProcedimientoVisual(Procedimiento):
             if obs.es_defecto:
                 defectos.append(Defecto(tipo="VISUAL", descripcion=obs.detalle, gravedad=obs.gravedad))
         return defectos
+
