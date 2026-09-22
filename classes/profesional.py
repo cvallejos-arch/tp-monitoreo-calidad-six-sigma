@@ -1,14 +1,14 @@
 import uuid
-from classes.excepciones import DatoInvalidoException
+from classes.excepciones import DatosInvalidosError
 from classes.certificacion import Certificacion
 from classes.validacion import validar_texto
 
+
 class Profesional:
     def __init__(self, nombre):
-        validar_texto(nombre)
         self._id = uuid.uuid4()
-        self._nombre = nombre
-        self._certificaciones = [] # {}?  "CONTROL_DIMENSIONAL": certificacion1,
+        self._nombre = validar_texto(nombre, "nombre")
+        self._certificaciones = {}  # dict {nombre_cert: Certificacion}
 
     @property
     def id(self):
@@ -20,25 +20,27 @@ class Profesional:
 
     @property
     def certificaciones(self):
-        return tuple(self._certificaciones)
+        """Retorna una copia del dict de certificaciones."""
+        return dict(self._certificaciones)
 
     def agregar_certificacion(self, cert):
+        """Agrega una certificación al profesional. Usa dict para acceso por nombre."""
         if not isinstance(cert, Certificacion):
-            raise DatoInvalidoException(
-                "El objeto '" + str(cert) + "' no es una instancia de la clase 'Certificacion'."
+            raise DatosInvalidosError(
+                f"El objeto '{cert}' no es una instancia de la clase 'Certificacion'."
             )
-        self._certificaciones.append(cert)
+        self._certificaciones[cert.nombre] = cert
 
     def tiene_certificacion_vigente(self, nombre, fecha):
-        for cert in self._certificaciones:
-            if cert.nombre == nombre and cert.es_vigente(fecha):
-                return True
-        return False
-    
+        """Verifica si el profesional tiene una certificación vigente con el nombre dado
+        en la fecha indicada. Usa dict.get() para acceso eficiente."""
+        cert = self._certificaciones.get(nombre)
+        if cert is None:
+            return False
+        return cert.es_vigente(fecha)
+
     def __repr__(self):
         return (
-            "Profesional(id=" + str(self._id) +
-            ", nombre=" + self._nombre +
-            ", certificaciones=" + str(self._certificaciones) +
-            ")"
+            f"Profesional(id={self._id}, nombre='{self._nombre}', "
+            f"certificaciones={list(self._certificaciones.keys())})"
         )

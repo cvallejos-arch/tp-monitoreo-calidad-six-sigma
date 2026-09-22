@@ -1,14 +1,11 @@
 from classes.validacion import validar_texto, validar_descripcion, validar_gravedad
 
+
 class Defecto:
     def __init__(self, tipo, descripcion, gravedad):
-        validar_texto(tipo)
-        validar_descripcion(descripcion)
-        validar_gravedad(gravedad)
-
-        self._tipo = tipo
-        self._descripcion = descripcion
-        self._gravedad = gravedad
+        self._tipo = validar_texto(tipo, "tipo")
+        self._descripcion = validar_descripcion(descripcion)
+        self._gravedad = validar_gravedad(gravedad)
 
     @property
     def tipo(self):
@@ -26,8 +23,15 @@ class Defecto:
         return self._gravedad == 5
 
     def copia(self):
+        """Crea una copia inmutable del defecto."""
         return Defecto(
             self._tipo,
             self._descripcion,
             self._gravedad
+        )
+
+    def __repr__(self):
+        return (
+            f"Defecto(tipo='{self._tipo}', descripcion='{self._descripcion}', "
+            f"gravedad={self._gravedad})"
         )

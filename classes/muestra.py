@@ -4,6 +4,7 @@ from classes.excepciones import TransicionIlegalError
 from classes.reporte import Reporte
 import uuid
 
+
 class Muestra:
     def __init__(self, cantidad):
         self._id = uuid.uuid4()
@@ -17,19 +18,20 @@ class Muestra:
     @property
     def id(self):
         return self._id
-    
+
     @property
     def cantidad(self):
         return self._cantidad
-    
+
     @property
     def estado(self):
         return self._estado
-    
+
     @property
     def defectos(self):
-        return self._defectos
-    
+        """Retorna una tupla inmutable de los defectos registrados."""
+        return tuple(self._defectos)
+
     @property
     def lote_id(self):
         return self._lote_id
@@ -42,41 +44,53 @@ class Muestra:
     def reporte(self):
         return self._reporte
 
-#--- Gestion de la apartenencia al lote ---
+    # --- Gestión de la pertenencia al lote ---
 
     def asignar_lote(self, lote_id):
+        """Asigna la muestra a un lote. Una muestra no puede moverse a otro lote."""
         if self._lote_id is not None:
             raise TransicionIlegalError(
-                "La muestra '" + self._id + "' appartient déjà au lote "
-                "'" + self._lote_id + "' et ne peut pas être déplacée vers "
-                "'" + lote_id + "'."
+                f"La muestra '{self._id}' ya pertenece al lote "
+                f"'{self._lote_id}' y no puede moverse a '{lote_id}'."
             )
         self._lote_id = lote_id
 
+    def asignar_inspeccion(self, inspeccion):
+        """Asigna la inspección a la muestra (encapsulación correcta)."""
+        if self._inspeccion is not None:
+            raise TransicionIlegalError(
+                f"La muestra '{self._id}' ya tiene una inspección asignada."
+            )
+        self._inspeccion = inspeccion
+
+    # --- Transiciones de estado ---
+
     def iniciar_inspeccion(self):
-        """ PENDIENTE a EN_INSPECCION"""
+        """Transición PENDIENTE → EN_INSPECCION."""
         if self._estado != EstadoMuestra.PENDIENTE:
             raise TransicionIlegalError(
-                "No se pudo iniciar la inspección: la muestra '" + self._id + 
-                "' está en estado" + self._estado.value + ", se espera PENDIENTE."
+                f"No se pudo iniciar la inspección: la muestra '{self._id}' "
+                f"está en estado {self._estado.value}, se espera PENDIENTE."
             )
         self._estado = EstadoMuestra.EN_INSPECCION
-        
 
     def agregar_defecto(self, defecto):
-        """ anadir un defecto"""
+        """Agrega un defecto a la muestra. Solo se puede en estado EN_INSPECCION."""
         if self._estado != EstadoMuestra.EN_INSPECCION:
             raise TransicionIlegalError(
-                "No se pudo anadir un defecto: la muestra '" + self._id + 
-                "' está en estado" + self._estado.value + ", se espera EN_INSPECCION."
+                f"No se pudo agregar un defecto: la muestra '{self._id}' "
+                f"está en estado {self._estado.value}, se espera EN_INSPECCION."
             )
         self._defectos.append(defecto)
 
     def cerrar(self, limite_gravedad):
+        """Cierra la muestra determinando su conformidad.
+        NO_CONFORME si tiene defecto crítico (gravedad 5) o suma > límite.
+        CONFORME en caso contrario. Ambos estados son finales."""
         if self._estado != EstadoMuestra.EN_INSPECCION:
             raise TransicionIlegalError(
-                "No se pudo cerrar la muestra '" + self._id + 
-                "' está en estado" + self._estado.value + ", se espera EN_INSPECCION."
+                f"No se pudo cerrar la muestra '{self._id}': "
+                f"está en estado {self._estado.value}, se espera EN_INSPECCION."
             )
 
         if self.tiene_critico() or self.suma_gravedades() > limite_gravedad:
@@ -84,33 +98,29 @@ class Muestra:
         else:
             self._estado = EstadoMuestra.CONFORME
 
+        # Generar reporte si es no conforme
         if self._estado == EstadoMuestra.NO_CONFORME:
             self._reporte = Reporte(
-                self._id,
-                self._lote_id,
-                self.inspeccion.profesional_id,
-                self._inspeccion.fecha,
-                self._defectos
+                muestra_id=self._id,
+                lote_id=self._lote_id,
+                profesional_id=self._inspeccion.profesional_id,
+                fecha=self._inspeccion.fecha,
+                defectos=self._defectos
             )
 
+    # --- Cálculos con sum(), any(), map() ---
 
     def suma_gravedades(self):
-        total=0
-        for d in self._defectos:
-            total = total + d.gravedad
-        return total
-
+        """Suma de gravedades de todos los defectos, usando sum() + map()."""
+        return sum(map(lambda d: d.gravedad, self._defectos))
 
     def tiene_critico(self):
-        for d in self._defectos:
-            if d.es_critico():
-                return True
-        return False 
+        """Verifica si hay al menos un defecto crítico (gravedad 5), usando any() + map()."""
+        return any(map(lambda d: d.es_critico(), self._defectos))
 
     def __repr__(self):
         return (
-            "Muestra(id=" + repr(self._id) + ", cantidad=" + str(self._cantidad) + ", "
-            "estado=" + self._estado.value + ", defectos=" + str(len(self._defectos)) + ", "
-            "lote_id=" + repr(self._lote_id) + ")"
-        )   
-            
+            f"Muestra(id={self._id}, cantidad={self._cantidad}, "
+            f"estado={self._estado.value}, defectos={len(self._defectos)}, "
+            f"lote_id={self._lote_id})"
+        )

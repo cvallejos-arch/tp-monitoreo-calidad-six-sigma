@@ -1,18 +1,26 @@
-import os
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+"""Tests des enums EstadoLote et EstadoMuestra."""
+import pytest
 
-from classes.lote import Lote
 from classes.estado_lote import EstadoLote
+from classes.estado_muestra import EstadoMuestra
 
 
-def test_creacion_lote_guarda_datos():
-    lote = Lote(1, 100)
-    assert lote.get_id() == 1
-    assert lote.get_cantidad_fabricada() == 100
+class TestEstadoLote:
+    def test_valores(self):
+        assert EstadoLote.EN_PRODUCCION.value == "EN_PRODUCCION"
+        assert EstadoLote.APROBADO.value == "APROBADO"
+        assert EstadoLote.RECHAZADO.value == "RECHAZADO"
+
+    def test_cantidad_estados(self):
+        assert len(EstadoLote) == 3
 
 
-def test_creacion_lote_estado_inicial():
-    lote = Lote(1, 100)
-    assert lote.get_estado() == EstadoLote.EN_PRODUCCION
-    assert lote.get_muestras() == []
+class TestEstadoMuestra:
+    def test_valores(self):
+        assert EstadoMuestra.PENDIENTE.value == "PENDIENTE"
+        assert EstadoMuestra.EN_INSPECCION.value == "EN_INSPECCION"
+        assert EstadoMuestra.CONFORME.value == "CONFORME"
+        assert EstadoMuestra.NO_CONFORME.value == "NO_CONFORME"
+
+    def test_cantidad_estados(self):
+        assert len(EstadoMuestra) == 4

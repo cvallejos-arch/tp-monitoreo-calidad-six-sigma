@@ -1,25 +1,28 @@
-from classes.validacion import validar_texto, validar_rango_entero
+from classes.validacion import validar_descripcion, validar_rango_entero
 from classes.excepciones import DatosInvalidosError
 
-class ObservacionVisual:
-    def __init__(self, descipcion, defecto_detectado, gravedad= None):
-        validar_texto(descipcion)
 
-        if defecto_detectado is not None:
-            if not isinstance(defecto_detectado, bool):
-                raise DatosInvalidosError("El valor de defecto_detectado debe ser un booleano")
+class ObservacionVisual:
+    """Observación de una inspección visual con detección de defecto y gravedad."""
+
+    def __init__(self, descripcion, defecto_detectado, gravedad=None):
+        self._descripcion = validar_descripcion(descripcion)
+
+        if not isinstance(defecto_detectado, bool):
+            raise DatosInvalidosError(
+                "El valor de defecto_detectado debe ser un booleano"
+            )
 
         self._defecto_detectado = defecto_detectado
 
-
         if defecto_detectado:
             if gravedad is None:
-                raise DatosInvalidosError("Debe especificarse la gravedad cuando hay un defecto detectado") 
+                raise DatosInvalidosError(
+                    "Debe especificarse la gravedad cuando hay un defecto detectado"
+                )
             self._gravedad = validar_rango_entero(gravedad, 1, 5, "gravedad")
         else:
             self._gravedad = None
-
-        self._descripcion = descipcion
 
     @property
     def descripcion(self):
@@ -35,8 +38,7 @@ class ObservacionVisual:
 
     def __repr__(self):
         return (
-            "ObservacionVisual(descripcion=" + self._descripcion +
-            ", defecto_detectado=" + str(self._defecto_detectado) +
-            ", gravedad=" + str(self._gravedad) +
-            ")"
+            f"ObservacionVisual(descripcion='{self._descripcion}', "
+            f"defecto_detectado={self._defecto_detectado}, "
+            f"gravedad={self._gravedad})"
         )

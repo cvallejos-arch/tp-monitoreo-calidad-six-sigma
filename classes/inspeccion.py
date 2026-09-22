@@ -9,10 +9,12 @@ from classes.excepciones import (
     InspeccionInvalidaError,
 )
 
-
 import uuid
 
+
 class Inspeccion:
+
+
     def __init__(self, muestra, profesional, equipo, procedimiento, fecha):
         self._id = uuid.uuid4()
 
@@ -21,40 +23,48 @@ class Inspeccion:
                 "La fecha de la inspección debe ser un objeto de tipo 'date'."
             )
 
+        # Validar estado de la muestra
         if muestra.estado != EstadoMuestra.PENDIENTE:
             raise TransicionIlegalError(
-                "La muestra '" + muestra.id + "' no está en estado PENDIENTE."
+                f"La muestra '{muestra.id}' no está en estado PENDIENTE."
             )
 
-        cert_requerida = procedimiento.get_certificacion_requerida()
-        if cert_requerida is not None and not profesional.tiene_certificacion(cert_requerida, fecha):
-            raise CertificacionNoVigenteError(
-                "El profesional '" + profesional.id() +
-                "' no tiene la certificación requerida '" + cert_requerida +
-                "' vigente a la fecha" + str(fecha) + "."
-            )
+        # Validar certificación del profesional
+        cert_requerida = procedimiento.certificacion_requerida
+        if cert_requerida is not None:
+            if not profesional.tiene_certificacion_vigente(cert_requerida, fecha):
+                raise CertificacionNoVigenteError(
+                    f"El profesional '{profesional.id}' no tiene la certificación "
+                    f"requerida '{cert_requerida}' vigente a la fecha {fecha}."
+                )
 
-        if not equipo.es_compatible_con_procedimiento(procedimiento.categoria_equipo_requerida):
+        # Validar compatibilidad del equipo
+        if not equipo.es_compatible(procedimiento.categoria_equipo_requerida):
             raise EquipoNoAptoError(
-                "El equipo '" + equipo.id +
-                "' no es compatible con el procedimiento '" + procedimiento.id + "'."
+                f"El equipo '{equipo.id}' (categoría '{equipo.categoria}') "
+                f"no es compatible con el procedimiento '{procedimiento.id}' "
+                f"(requiere '{procedimiento.categoria_equipo_requerida}')."
             )
 
+        # Validar calibración del equipo
         if not equipo.esta_calibrado(fecha):
             raise EquipoNoAptoError(
-                "El equipo '" + equipo.id +
-                "' no está calibrado a la fecha " + str(fecha) + "."
+                f"El equipo '{equipo.id}' no está calibrado a la fecha {fecha}."
             )
+
+        # Iniciar la inspección (transición PENDIENTE → EN_INSPECCION)
         muestra.iniciar_inspeccion()
 
-
+        # Guardar el contexto de la inspección (inmutable durante la ejecución)
         self._muestra = muestra
         self._profesional = profesional
         self._equipo = equipo
         self._procedimiento = procedimiento
         self._fecha = fecha
-        muestra._inspeccion = self
         self._cerrada = False
+
+        # Asignar inspección a la muestra (encapsulación correcta)
+        muestra.asignar_inspeccion(self)
 
     @property
     def id(self):
@@ -62,33 +72,39 @@ class Inspeccion:
 
     @property
     def muestra_id(self):
-        return self._muestra.id()
+        return self._muestra.id
 
     @property
     def profesional_id(self):
-        return self._profesional.id()
+        return self._profesional.id
 
     @property
     def equipo_id(self):
-        return self._equipo.id()
+        return self._equipo.id
 
     @property
     def procedimiento_id(self):
-        return self._procedimiento.id()
+        return self._procedimiento.id
 
     @property
     def fecha(self):
         return self._fecha
 
     @property
+    def cerrada(self):
+        return self._cerrada
+
+    @property
     def defectos(self):
         return self._muestra.defectos
 
     def ejecutar(self, observaciones):
+        """Ejecuta el procedimiento con las observaciones dadas.
+        El procedimiento evalúa polimórficamente y genera defectos."""
         if self._cerrada:
             raise InspeccionInvalidaError(
-                "La inspección '" + self._id +
-                "' ya ha sido cerrada y no puede ser ejecutada nuevamente."
+                f"La inspección '{self._id}' ya ha sido cerrada y no puede "
+                f"ser ejecutada nuevamente."
             )
 
         defectos = self._procedimiento.evaluar(observaciones)
@@ -97,23 +113,18 @@ class Inspeccion:
         return defectos
 
     def cerrar(self):
-        if self.cerrada:
+        """Cierra la inspección y determina la conformidad de la muestra."""
+        if self._cerrada:
             raise InspeccionInvalidaError(
-                "La inspección '" + self._id +
-                "' ya ha sido cerrada y no puede ser cerrada nuevamente."
+                f"La inspección '{self._id}' ya ha sido cerrada."
             )
         self._cerrada = True
         return self._muestra.cerrar(self._procedimiento.limite_gravedad_acumulada)
 
     def __repr__(self):
         return (
-            "Inspeccion(id=" + str(self._id) +
-            ", muestra_id=" + str(self._muestra.id()) +
-            ", profesional_id=" + str(self._profesional.id()) +
-            ", equipo_id=" + str(self._equipo.id()) +
-            ", procedimiento_id=" + str(self._procedimiento.id()) +
-            ", fecha=" + str(self._fecha) +
-            ", cerrada=" + str(self._cerrada) +
-            ")"
+            f"Inspeccion(id={self._id}, muestra_id={self._muestra.id}, "
+            f"profesional_id={self._profesional.id}, equipo_id={self._equipo.id}, "
+            f"procedimiento_id={self._procedimiento.id}, fecha={self._fecha}, "
+            f"cerrada={self._cerrada})"
         )
-
