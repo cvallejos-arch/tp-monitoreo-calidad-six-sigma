@@ -32,3 +32,13 @@ def validar_texto(texto):
 
     if not texto.replace(" ", "").isalpha():
         raise ValueError("El texto solo puede contener letras")
+
+def validar_rango_entero(valor, min_val, max_val, nombre_campo):
+
+    if not isinstance(valor, int) or isinstance(valor, bool):
+        raise ValueError(f"El valor de '{nombre_campo}' debe ser un número entero, recibido: {valor}")
+    if valor < min_val or valor > max_val:
+        raise ValueError(
+            f"El valor de '{nombre_campo}' debe estar entre {min_val} y {max_val}, recibido: {valor}"
+        )
+    return valor
