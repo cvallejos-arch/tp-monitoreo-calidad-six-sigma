@@ -8,7 +8,7 @@ class Equipo:
         self._id = uuid.uuid4()
         self._categoria = categoria
         self._fecha_calibracion = fecha_calibracion
-
+    
     @property
     def id(self):
         return self._id
