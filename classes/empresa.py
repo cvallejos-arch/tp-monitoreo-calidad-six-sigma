@@ -1,11 +1,17 @@
 from lote import Lote
+from procedimiento import Procedimiento
+from inspeccion import Inspeccion
+from profesional import Profesional
+from equipo import Equipo
+from muestra import Muestra
+
 
 class Empresa:
     def __init__(self):
         self._lotes = []
         self._muestras = []
         self._profesionales = []
-        self._equipos = []
+        self._equipos = []  #podrimaos hacer {}  id_equipo_1: equipo1, ...
         self._procedimientos = []
         self._inspecciones = []
 

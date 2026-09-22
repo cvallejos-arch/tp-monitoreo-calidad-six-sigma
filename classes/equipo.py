@@ -1,4 +1,5 @@
 from validacion import validar_texto
+import uuid
 
 class Equipo:
     def __init__(self, id, categoria, fecha_calibracion):
