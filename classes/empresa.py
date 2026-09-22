@@ -52,7 +52,7 @@ class Empresa:
         self._registros["procedimientos"][procedimiento.id] = procedimiento
         return procedimiento
 
-    def crear_registrar_inspeccion(
+    def lanzar_inspeccion(
         self,
         muestra,
         profesional,
@@ -69,14 +69,5 @@ class Empresa:
         )
 
         self._registros["inspecciones"][inspeccion.id] = inspeccion
-        return inspeccion
 
-    def lanzar_inspeccion(
-        self,
-        muestra,
-        profesional,
-        equipo,
-        procedimiento,
-        fecha
-    ):
-        pass
+        return inspeccion
