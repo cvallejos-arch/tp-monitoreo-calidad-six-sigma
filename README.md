@@ -104,20 +104,25 @@ classDiagram
     direction TB
 
     %% ══════════════════════════════════════════════
-    %% Administrador (represente main.py)
+    %% Empresa (fachada del sistema)
     %% ══════════════════════════════════════════════
 
-    class Administrador {
-        +registrar_lote(id str, cantidad int) Lote
-        +registrar_muestra(id str, cantidad int) Muestra
-        +registrar_profesional(id str, nombre str) Profesional
-        +registrar_equipo(id str, categoria str, fecha_calibracion date) Equipo
-        +registrar_procedimiento(proc Procedimiento)
-        +lanzar_inspeccion(muestra Muestra, profesional Profesional, equipo Equipo, procedimiento Procedimiento, fecha date) Inspeccion
+    class Empresa {
+        -_registros : dict~str dict~
+        +crear_registrar_lote(nombre_componentes str, cantidad_fabricada int) Lote
+        +crear_registrar_muestra(cantidad int) Muestra
+        +crear_registrar_profesional(nombre str) Profesional
+        +crear_registrar_equipo(categoria str, fecha_calibracion date) Equipo
+        +crear_registrar_procedimiento(tipo_procedimiento class, **kwargs) Procedimiento
+        +lanzar_inspeccion(muestra, profesional, equipo, procedimiento, fecha) Inspeccion
+        +obtener_lote(lote_id) Lote
+        +obtener_muestra(muestra_id) Muestra
+        +listar_lotes() list~Lote~
+        +listar_inspecciones() list~Inspeccion~
     }
 
     %% ══════════════════════════════════════════════
-    %% ÉTAPE 1 — Enums
+    %% Enums
     %% ══════════════════════════════════════════════
 
     class EstadoMuestra {
@@ -136,7 +141,7 @@ classDiagram
     }
 
     %% ══════════════════════════════════════════════
-    %% ÉTAPE 1 — Defecto
+    %% Defecto
     %% ══════════════════════════════════════════════
 
     class Defecto {
@@ -151,7 +156,7 @@ classDiagram
     }
 
     %% ══════════════════════════════════════════════
-    %% ÉTAPE 1 — Muestra
+    %% Muestra
     %% ══════════════════════════════════════════════
 
     class Muestra {
@@ -167,29 +172,32 @@ classDiagram
         +estado : EstadoMuestra
         +defectos : tuple~Defecto~
         +lote_id : str
+        +inspeccion : Inspeccion
         +reporte : Reporte
         +asignar_lote(lote_id str)
+        +asignar_inspeccion(inspeccion Inspeccion)
         +iniciar_inspeccion()
         +agregar_defecto(defecto Defecto)
-        +cerrar(limite_gravedad int) Reporte
+        +cerrar(limite_gravedad int)
         +suma_gravedades() int
         +tiene_critico() bool
     }
 
     %% ══════════════════════════════════════════════
-    %% ÉTAPE 1 — Lote
+    %% Lote
     %% ══════════════════════════════════════════════
 
     class Lote {
         -_id : str
+        -_nombre_componentes : str
         -_cantidad_fabricada : int
         -_estado : EstadoLote
         -_muestras : dict~str Muestra~
         +id : str
+        +nombre_componentes : str
         +cantidad_fabricada : int
         +estado : EstadoLote
         +muestras : tuple~Muestra~
-        +nombre_componente : str
         +agregar_muestra(muestra Muestra)
         +decidir() EstadoLote
         +porcentaje_no_conforme() float
@@ -199,7 +207,7 @@ classDiagram
     }
 
     %% ══════════════════════════════════════════════
-    %% ÉTAPE 2 — Certificacion
+    %% Certificacion
     %% ══════════════════════════════════════════════
 
     class Certificacion {
@@ -207,25 +215,28 @@ classDiagram
         -_fecha_inicio : date
         -_fecha_fin : date
         +nombre : str
+        +fecha_inicio : date
+        +fecha_fin : date
         +es_vigente(fecha date) bool
     }
 
     %% ══════════════════════════════════════════════
-    %% ÉTAPE 2 — Profesional
+    %% Profesional
     %% ══════════════════════════════════════════════
 
     class Profesional {
         -_id : str
         -_nombre : str
-        -_certificaciones : list~Certificacion~
+        -_certificaciones : dict~str Certificacion~
         +id : str
         +nombre : str
+        +certificaciones : dict~str Certificacion~
         +agregar_certificacion(cert Certificacion)
         +tiene_certificacion_vigente(nombre str, fecha date) bool
     }
 
     %% ══════════════════════════════════════════════
-    %% ÉTAPE 2 — Equipo
+    %% Equipo
     %% ══════════════════════════════════════════════
 
     class Equipo {
@@ -240,7 +251,7 @@ classDiagram
     }
 
     %% ══════════════════════════════════════════════
-    %% ÉTAPE 2 — Inspeccion
+    %% Inspeccion
     %% ══════════════════════════════════════════════
 
     class Inspeccion {
@@ -250,7 +261,6 @@ classDiagram
         -_equipo : Equipo
         -_procedimiento : Procedimiento
         -_fecha : date
-        -_defectos : list~Defecto~
         -_cerrada : bool
         +id : str
         +muestra_id : str
@@ -258,21 +268,23 @@ classDiagram
         +equipo_id : str
         +procedimiento_id : str
         +fecha : date
-        +defectos : tuple~Defecto~
-        +ejecutar(observaciones list)
-        +cerrar() Reporte
+        +cerrada : bool
+        +ejecutar(observaciones list) list~Defecto~
+        +cerrar()
     }
 
     %% ══════════════════════════════════════════════
-    %% ÉTAPE 3 — Reporte
+    %% Reporte
     %% ══════════════════════════════════════════════
 
     class Reporte {
+        -_id : str
         -_muestra_id : str
         -_lote_id : str
         -_profesional_id : str
         -_fecha : date
         -_defectos : tuple~Defecto~
+        +id : str
         +muestra_id : str
         +lote_id : str
         +profesional_id : str
@@ -281,7 +293,7 @@ classDiagram
     }
 
     %% ══════════════════════════════════════════════
-    %% ÉTAPE 4 — Polymorphisme
+    %% Polymorphisme — Procedimiento
     %% ══════════════════════════════════════════════
 
     class Procedimiento {
@@ -300,6 +312,7 @@ classDiagram
 
     class ProcedimientoDimensional {
         +evaluar(observaciones list) list~Defecto~
+        -_calcular_gravedad(obs) int
     }
 
     class ProcedimientoVisual {
@@ -307,39 +320,71 @@ classDiagram
     }
 
     %% ══════════════════════════════════════════════
+    %% Observaciones
+    %% ══════════════════════════════════════════════
+
+    class ObservacionDimensional {
+        -_valor_medido : float
+        -_tolerancia_min : float
+        -_tolerancia_max : float
+        -_descripcion : str
+        +valor_medido : float
+        +tolerancia_min : float
+        +tolerancia_max : float
+        +descripcion : str
+        +desviacion : float
+        +tolerancia : float
+    }
+    note for ObservacionDimensional "desviacion y tolerancia son propiedades calculadas"
+
+    class ObservacionVisual {
+        -_descripcion : str
+        -_defecto_detectado : bool
+        -_gravedad : int
+        +descripcion : str
+        +defecto_detectado : bool
+        +gravedad : int
+    }
+
+    %% ══════════════════════════════════════════════
     %% RELATIONS
     %% ══════════════════════════════════════════════
 
-    %% Etapa 1 — Estructura base
+    %% Estructura base
     Lote "1" o-- "0..*" Muestra : contiene
     Muestra "1" *-- "0..*" Defecto : acumula
     Muestra "1" --> "0..1" Reporte : genera si NO_CONFORME
 
-    %% Etapa 1 — Dependencias enums
+    %% Dependencias enums
     Muestra ..> EstadoMuestra : usa
     Lote ..> EstadoLote : usa
 
-    %% Etapa 2 — Inspeccion
+    %% Inspeccion
     Inspeccion "1" --> "1" Muestra : evalua
     Inspeccion "1" --> "1" Profesional : ejecutada por
     Inspeccion "1" --> "1" Equipo : utiliza
     Inspeccion "1" --> "1" Procedimiento : guiada por
 
-    %% Etapa 2 — Profesional
+    %% Profesional
     Profesional "1" *-- "0..*" Certificacion : posee
 
-    %% Etapa 3 — Reporte
+    %% Reporte
     Reporte "1" *-- "1..*" Defecto : copia fija
 
-    %% Etapa 4 — Herencia
+    %% Herencia — Procedimientos
     Procedimiento <|-- ProcedimientoDimensional
     Procedimiento <|-- ProcedimientoVisual
 
-    %% Administrador — crea y coordina todo
-    Administrador ..> Lote : registra
-    Administrador ..> Muestra : registra
-    Administrador ..> Profesional : registra
-    Administrador ..> Equipo : registra
-    Administrador ..> Procedimiento : registra
-    Administrador ..> Inspeccion : lanza
+    %% Observaciones — usadas por los procedimientos
+    ProcedimientoDimensional ..> ObservacionDimensional : evalua
+    ProcedimientoVisual ..> ObservacionVisual : evalua
+
+    %% Empresa — fachada que crea y coordina todo
+    Empresa ..> Lote : crea y registra
+    Empresa ..> Muestra : crea y registra
+    Empresa ..> Profesional : crea y registra
+    Empresa ..> Equipo : crea y registra
+    Empresa ..> Procedimiento : crea y registra
+    Empresa ..> Inspeccion : lanza
 ```
+
