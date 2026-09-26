@@ -13,6 +13,8 @@ from classes.excepciones import (
     CertificacionNoVigenteError,
     EquipoNoAptoError,
 )
+from classes.estado_lote import EstadoLote
+from classes.estado_muestra import EstadoMuestra
 
 
 def separador(titulo):
@@ -95,9 +97,9 @@ def main():
     proc_dimensional = empresa.crear_registrar_procedimiento(
         ProcedimientoDimensional,
         limite_gravedad_acumulada=10,
-        categoria_equipo_requerida="Dimensional"
+        unidad_medida="mm"
     )
-    print(f"Procedimiento dimensional: {proc_dimensional}")
+    print(f"Procedimiento dimensional: {proc_dimensional} (unidad: {proc_dimensional.unidad_medida})")
 
     # ============================================================
     #  5. DEMOSTRAR VALIDACIONES QUE RECHAZAN
@@ -112,6 +114,7 @@ def main():
         )
     except CertificacionNoVigenteError as e:
         print(f"   [X] RECHAZADO: {e}")
+        print(f"       Detalles del error: {e.detalles}")
         print(f"   Estado muestra: {muestras[0].estado.value} (no cambio)")
 
     # 5b. Equipo con calibración vencida
@@ -122,6 +125,7 @@ def main():
         )
     except EquipoNoAptoError as e:
         print(f"   [X] RECHAZADO: {e}")
+        print(f"       Detalles del error: {e.detalles}")
 
     # 5c. Equipo de categoría incompatible
     print("\n5c. Intentando inspección con equipo de categoría incompatible...")
@@ -131,6 +135,7 @@ def main():
         )
     except EquipoNoAptoError as e:
         print(f"   [X] RECHAZADO: {e}")
+        print(f"       Detalles del error: {e.detalles}")
 
     # ============================================================
     #  6. EJECUTAR INSPECCIONES VISUALES (POLIMORFISMO)
@@ -229,6 +234,14 @@ def main():
             print(f"    Defectos ({len(r.defectos)}):")
             for d in r.defectos:
                 print(f"      - {d}")
+
+    print(f"\nConsultas dinámicas en Empresa con **kwargs (filtros):")
+    lotes_aprobados = empresa.listar_lotes(estado=EstadoLote.APROBADO)
+    print(f"  - Lotes con estado APROBADO: {len(lotes_aprobados)}")
+    muestras_no_conf = empresa.listar_muestras(estado=EstadoMuestra.NO_CONFORME)
+    print(f"  - Muestras con estado NO_CONFORME: {len(muestras_no_conf)}")
+    inspecciones_cerradas = empresa.listar_inspecciones(cerrada=True)
+    print(f"  - Inspecciones cerradas: {len(inspecciones_cerradas)}")
 
     print(f"\n{'='*60}")
     print("  [OK] EJECUCION COMPLETA - TODAS LAS FUNCIONALIDADES DEMOSTRADAS")

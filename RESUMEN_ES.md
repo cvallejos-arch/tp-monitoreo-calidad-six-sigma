@@ -152,6 +152,7 @@ Una vez comprendida la logica global, examinamos cada archivo, sus elecciones de
 **Especificidades Python**:
 - **Herencia de clases**: todas heredan de `CalidadError`, que hereda de `Exception`
 - **Jerarquia de excepciones**: permite capturar `CalidadError` para atrapar TODAS las fallas del dominio, o capturar un tipo exacto
+- **Contexto estructurado via `**detalles`**: `CalidadError` y todas sus subclases admiten argumentos por clave `**detalles`. La propiedad `@property detalles` devuelve un diccionario con metadatos de diagnostico (ej: `lote_id`, `capacidad_usada`, `fecha`, etc.). Esto posibilita trazabilidad industrial ISO/Six Sigma sin contaminar el mensaje textual.
 
 **¿Por que custom en lugar de ValueError?**
 La consigna lo exige (regla 86). Facilita discriminar errores de logica de negocio de fallas genericas del interprete.
@@ -159,10 +160,10 @@ La consigna lo exige (regla 86). Facilita discriminar errores de logica de negoc
 **Clases**:
 | Excepcion | Uso |
 |---|---|
-| `CalidadError` | Clase base comun |
+| `CalidadError` | Clase base comun (soporta `**detalles`) |
 | `DatosInvalidosError` | Datos fuera de formato o rango (cantidades, gravedades, textos vacios) |
-| `EquipoNoAptoError` | Equipo descalibrado o categoria incompatible |
-| `CertificacionNoVigenteError` | Certificacion ausente o caducada a la fecha de control |
+| `EquipoNoAptoError` | Equipo descalibrado o categoria incompatible (provee `equipo_id`, `fecha`) |
+| `CertificacionNoVigenteError` | Certificacion ausente o caducada a la fecha de control (provee `profesional_id`) |
 | `TransicionIlegalError` | Cambios de estado no permitidos (cerrar muestra ya cerrada, capacidad superada) |
 | `InspeccionInvalidaError` | Intentos de operar sobre inspeccion cerrada |
 
@@ -271,13 +272,15 @@ Permite la asignacion directa: `self._cantidad = validar_cantidad(cantidad)`.
 ### 3.4 Procedimientos y Polimorfismo
 
 #### `procedimiento.py` -- Clase Base Abstracta
-Define el contrato con `evaluar(observaciones)` que lanza `NotImplementedError` si una subclase no lo implementa.
+Define el contrato con `evaluar(observaciones)` que lanza `NotImplementedError` si una subclase no lo implementa. Su constructor admite `**kwargs` para soportar herencia cooperativa.
 
 #### `proc_dimensional.py` -- ProcedimientoDimensional
 Mide variaciones cuantitativas respecto a limites (min/max). Calcula gravedades proporcionales al desvio y crea defectos de tipo `"DIMENSIONAL"`.
+- **Constructor cooperativo `super().__init__(**kwargs)`**: intercepta su atributo propio `unidad_medida="mm"` y define por defecto `categoria_equipo_requerida="Dimensional"` antes de delegar a `super()`.
 
 #### `proc_visual.py` -- ProcedimientoVisual
 Registra anomalias cualitativas detectadas por observacion y crea defectos de tipo `"VISUAL"`.
+- **Constructor cooperativo `super().__init__(**kwargs)`**: intercepta su atributo propio `nivel_iluminacion_minimo=None` y define por defecto `categoria_equipo_requerida="Visual"`.
 
 ---
 
@@ -288,9 +291,15 @@ Registra anomalias cualitativas detectadas por observacion y crea defectos de ti
 ---
 
 ### 3.6 Fachada (`empresa.py`)
-- Punto unico de gestion (`Fachada`).
+- Punto unico de gestion (**Fachada / Facade**).
 - `crear_registrar_muestra(cantidad, lote)`: delega al lote la creacion (`lote.crear_muestra(cantidad)`) y la registra en su inventario.
-- `**kwargs` en `crear_registrar_procedimiento`: provee total flexibilidad para admitir parametros heterogeneos segun el procedimiento.
+- `**kwargs` en `crear_registrar_procedimiento` (Factory): provee total flexibilidad para admitir parametros heterogeneos segun el procedimiento.
+- `**filtros` en metodos de consulta (Filtrado dinamico): `listar_lotes(**filtros)`, `listar_inspecciones(**filtros)` y `listar_muestras(**filtros)` permiten consultas expresivas (estilo Django ORM):
+  ```python
+  empresa.listar_lotes(estado=EstadoLote.APROBADO)
+  empresa.listar_inspecciones(cerrada=True)
+  empresa.listar_muestras(estado=EstadoMuestra.NO_CONFORME)
+  ```
 
 ---
 
@@ -347,7 +356,7 @@ En este diseño la relacion `Lote` / `Muestra` es de **composicion estricta** (`
 | **`all()`** | Lote.todas_cerradas | Cortocircuito: se detiene en el primer False |
 | **`lambda`** | Todos los usos con map() | Funcion anonima inline |
 | **`tuple()`** | Muestra.defectos, Lote.muestras, Reporte._defectos | Coleccion inmutable |
-| **`**kwargs`** | Empresa.crear_registrar_procedimiento | Argumentos nombrados variables |
+| **`**kwargs`** | 1. Empresa.crear_registrar_procedimiento (Factory)<br>2. Subclases de Procedimiento (`super().__init__(**kwargs)`)<br>3. Empresa.listar_* (`**filtros` dinamicos)<br>4. CalidadError (`**detalles` de diagnostico) | Flexibilidad en argumentos nombrados, herencia cooperativa, consultas dinamicas y contexto estructurado de errores |
 | **`Enum`** | EstadoMuestra, EstadoLote | Constantes tipadas |
 | **`uuid.uuid4()`** | Todas las clases con id | Identificadores unicos universales |
 | **`@property`** | Todas las clases | Encapsulacion solo lectura |

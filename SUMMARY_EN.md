@@ -152,6 +152,7 @@ Having understood the operational flow, we can now examine each file under the h
 **Python Specifics**:
 - **Class Inheritance**: all inherit from `CalidadError`, which inherits from `Exception`
 - **Exception Hierarchy**: allows catching `CalidadError` to trap ALL domain issues, or specific types for granular handling
+- **Structured Context via `**detalles`**: `CalidadError` and all subclasses accept keyword arguments `**detalles`. The `@property detalles` exposes a dictionary of diagnostic metadata (e.g. `lote_id`, `capacidad_usada`, `fecha`, etc.) enabling ISO/Six Sigma traceability without bloating the message text.
 
 **Why custom instead of ValueError?**
 Mandated by assignment rule 86. Separates business violations from internal Python syntax errors.
@@ -159,10 +160,10 @@ Mandated by assignment rule 86. Separates business violations from internal Pyth
 **Classes**:
 | Exception | Usage |
 |---|---|
-| `CalidadError` | Base domain exception |
+| `CalidadError` | Base domain exception (supports `**detalles`) |
 | `DatosInvalidosError` | Out of range/format values (quantities, severities, empty strings) |
-| `EquipoNoAptoError` | Uncalibrated equipment or incompatible category |
-| `CertificacionNoVigenteError` | Absent or expired certification on inspection date |
+| `EquipoNoAptoError` | Uncalibrated equipment or incompatible category (provides `equipo_id`, `fecha`) |
+| `CertificacionNoVigenteError` | Absent or expired certification on inspection date (provides `profesional_id`) |
 | `TransicionIlegalError` | Illegal state transitions (closing closed sample, exceeding batch capacity) |
 | `InspeccionInvalidaError` | Operations attempted on a closed inspection |
 
@@ -267,13 +268,15 @@ Enables clean one-liner assignment: `self._cantidad = validar_cantidad(cantidad)
 ### 3.4 Procedures and Polymorphism
 
 #### `procedimiento.py` -- Abstract Base Class
-Defines `evaluar(observaciones)` interface raising `NotImplementedError` if not overridden.
+Defines `evaluar(observaciones)` interface raising `NotImplementedError` if not overridden. Constructor accepts `**kwargs` to support cooperative Python inheritance.
 
 #### `proc_dimensional.py` -- ProcedimientoDimensional
 Evaluates numeric measurements against tolerances, computing severity from deviation.
+- **Cooperative Constructor `super().__init__(**kwargs)`**: intercepts `unidad_medida="mm"` and defaults `categoria_equipo_requerida="Dimensional"` before passing remaining kwargs to `super()`.
 
 #### `proc_visual.py` -- ProcedimientoVisual
 Evaluates visual findings and produces visual defect objects.
+- **Cooperative Constructor `super().__init__(**kwargs)`**: intercepts `nivel_iluminacion_minimo=None` and defaults `categoria_equipo_requerida="Visual"`.
 
 ---
 
@@ -286,7 +289,13 @@ Evaluates visual findings and produces visual defect objects.
 ### 3.6 Facade (`empresa.py`)
 - Single management entry point (**Facade** pattern).
 - `crear_registrar_muestra(cantidad, lote)`: delegates sample creation to the batch (`lote.crear_muestra(cantidad)`) and registers it.
-- `**kwargs` in `crear_registrar_procedimiento`: provides flexible parameter passing for diverse procedure constructors.
+- `**kwargs` in `crear_registrar_procedimiento` (Factory): provides flexible parameter passing for diverse procedure constructors.
+- `**filtros` in listing queries (Dynamic Filtering): `listar_lotes(**filtros)`, `listar_inspecciones(**filtros)`, and `listar_muestras(**filtros)` enable expressive, declarative filtering (Django ORM style):
+  ```python
+  empresa.listar_lotes(estado=EstadoLote.APROBADO)
+  empresa.listar_inspecciones(cerrada=True)
+  empresa.listar_muestras(estado=EstadoMuestra.NO_CONFORME)
+  ```
 
 ---
 
@@ -343,7 +352,7 @@ In this architecture, `Lote` / `Muestra` is **strict composition** (`*--`): orph
 | **`all()`** | Lote.todas_cerradas | Short-circuit: stops at first False |
 | **`lambda`** | Everywhere with map() | Anonymous inline function |
 | **`tuple()`** | Muestra.defectos, Lote.muestras, Reporte._defectos | Immutable collection |
-| **`**kwargs`** | Empresa.crear_registrar_procedimiento | Variable named arguments |
+| **`**kwargs`** | 1. Empresa.crear_registrar_procedimiento (Factory)<br>2. Procedimiento subclasses (`super().__init__(**kwargs)`)<br>3. Empresa.listar_* (`**filtros` dynamic queries)<br>4. CalidadError (`**detalles` diagnostic context) | Named argument flexibility, cooperative inheritance, expressive dynamic queries, and structured error metadata |
 | **`Enum`** | EstadoMuestra, EstadoLote | Typed constants |
 | **`uuid.uuid4()`** | All classes with id | Universally unique identifiers |
 | **`@property`** | All classes | Read-only encapsulation |

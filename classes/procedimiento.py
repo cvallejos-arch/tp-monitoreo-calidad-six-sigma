@@ -5,7 +5,7 @@ from classes.validacion import validar_texto, validar_entero
 class Procedimiento:
 
     def __init__(self, limite_gravedad_acumulada, categoria_equipo_requerida,
-                 certificacion_requerida=None):
+                 certificacion_requerida=None, **kwargs):
         self._id = uuid.uuid4()
         self._limite_gravedad_acumulada = validar_entero(
             limite_gravedad_acumulada, "limite_gravedad_acumulada"

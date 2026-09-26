@@ -35,7 +35,10 @@ class Inspeccion:
             if not profesional.tiene_certificacion_vigente(cert_requerida, fecha):
                 raise CertificacionNoVigenteError(
                     f"El profesional '{profesional.id}' no tiene la certificación "
-                    f"requerida '{cert_requerida}' vigente a la fecha {fecha}."
+                    f"requerida '{cert_requerida}' vigente a la fecha {fecha}.",
+                    profesional_id=profesional.id,
+                    certificacion_requerida=cert_requerida,
+                    fecha=fecha
                 )
 
         # Validar compatibilidad del equipo
@@ -43,13 +46,19 @@ class Inspeccion:
             raise EquipoNoAptoError(
                 f"El equipo '{equipo.id}' (categoría '{equipo.categoria}') "
                 f"no es compatible con el procedimiento '{procedimiento.id}' "
-                f"(requiere '{procedimiento.categoria_equipo_requerida}')."
+                f"(requiere '{procedimiento.categoria_equipo_requerida}').",
+                equipo_id=equipo.id,
+                categoria=equipo.categoria,
+                categoria_requerida=procedimiento.categoria_equipo_requerida
             )
 
         # Validar calibración del equipo
         if not equipo.esta_calibrado(fecha):
             raise EquipoNoAptoError(
-                f"El equipo '{equipo.id}' no está calibrado a la fecha {fecha}."
+                f"El equipo '{equipo.id}' no está calibrado a la fecha {fecha}.",
+                equipo_id=equipo.id,
+                fecha=fecha,
+                fecha_calibracion=equipo.fecha_calibracion
             )
 
         # Iniciar la inspección (transición PENDIENTE → EN_INSPECCION)

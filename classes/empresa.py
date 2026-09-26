@@ -71,10 +71,23 @@ class Empresa:
         """Accede al registro de muestras por id (dict access)."""
         return self._registros["muestras"].get(muestra_id)
 
-    def listar_lotes(self):
-        """Retorna todos los lotes registrados."""
-        return list(self._registros["lotes"].values())
+    def listar_lotes(self, **filtros):
+        """Retorna los lotes registrados, opcionalmente filtrados por atributos (kwargs)."""
+        lotes = self._registros["lotes"].values()
+        for attr, val in filtros.items():
+            lotes = [l for l in lotes if getattr(l, attr, None) == val]
+        return list(lotes)
 
-    def listar_inspecciones(self):
-        """Retorna todas las inspecciones registradas."""
-        return list(self._registros["inspecciones"].values())
+    def listar_inspecciones(self, **filtros):
+        """Retorna las inspecciones registradas, opcionalmente filtradas por atributos (kwargs)."""
+        inspecciones = self._registros["inspecciones"].values()
+        for attr, val in filtros.items():
+            inspecciones = [i for i in inspecciones if getattr(i, attr, None) == val]
+        return list(inspecciones)
+
+    def listar_muestras(self, **filtros):
+        """Retorna las muestras registradas, opcionalmente filtradas por atributos (kwargs)."""
+        muestras = self._registros["muestras"].values()
+        for attr, val in filtros.items():
+            muestras = [m for m in muestras if getattr(m, attr, None) == val]
+        return list(muestras)

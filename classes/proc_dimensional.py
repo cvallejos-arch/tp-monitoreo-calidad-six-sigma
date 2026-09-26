@@ -4,6 +4,14 @@ from classes.defecto import Defecto
 
 class ProcedimientoDimensional(Procedimiento):
 
+    def __init__(self, unidad_medida="mm", **kwargs):
+        kwargs.setdefault("categoria_equipo_requerida", "Dimensional")
+        super().__init__(**kwargs)
+        self._unidad_medida = unidad_medida
+
+    @property
+    def unidad_medida(self):
+        return self._unidad_medida
 
     def evaluar(self, observaciones):
         """Evalúa cada observación dimensional. Si la desviación es mayor

@@ -48,7 +48,11 @@ class Lote:
             raise TransicionIlegalError(
                 f"No se puede crear una muestra de {cantidad} unidades: "
                 f"la suma ({capacidad_usada + cantidad}) excede la cantidad "
-                f"fabricada ({self._cantidad_fabricada})."
+                f"fabricada ({self._cantidad_fabricada}).",
+                lote_id=self._id,
+                capacidad_usada=capacidad_usada,
+                cantidad_solicitada=cantidad,
+                cantidad_fabricada=self._cantidad_fabricada
             )
 
         muestra = Muestra(cantidad, self._id)

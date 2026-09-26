@@ -117,8 +117,9 @@ classDiagram
         +lanzar_inspeccion(muestra, profesional, equipo, procedimiento, fecha) Inspeccion
         +obtener_lote(lote_id) Lote
         +obtener_muestra(muestra_id) Muestra
-        +listar_lotes() list~Lote~
-        +listar_inspecciones() list~Inspeccion~
+        +listar_lotes(**filtros) list~Lote~
+        +listar_inspecciones(**filtros) list~Inspeccion~
+        +listar_muestras(**filtros) list~Muestra~
     }
 
     %% ══════════════════════════════════════════════
@@ -311,11 +312,15 @@ classDiagram
     note for Procedimiento "_certificacion_requerida puede ser None (regla 5)"
 
     class ProcedimientoDimensional {
+        -_unidad_medida : str
+        +unidad_medida : str
         +evaluar(observaciones list) list~Defecto~
         -_calcular_gravedad(obs) int
     }
 
     class ProcedimientoVisual {
+        -_nivel_iluminacion_minimo : int
+        +nivel_iluminacion_minimo : int
         +evaluar(observaciones list) list~Defecto~
     }
 

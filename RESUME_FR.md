@@ -152,6 +152,7 @@ Apres avoir compris la logique operationnelle globale, nous pouvons analyser cha
 **Specificites Python** :
 - **Heritage de classes** : toutes heritent de `CalidadError` qui herite de `Exception`
 - **Hierarchie d'exceptions** : permet de catcher `CalidadError` pour attraper TOUTES les erreurs du domaine, ou catcher une exception specifique
+- **Contexte structure via `**detalles`** : `CalidadError` et toutes ses sous-classes acceptent des `**detalles` sous forme de mot-cles. L'attribut `@property detalles` retourne un dictionnaire de metadatas de diagnostic (ex: `lote_id`, `capacidad_usada`, `fecha`, etc.). Cela permet une tracabilite industrielle ISO/Six Sigma sans polluer le message texte de l'exception.
 
 **Pourquoi custom au lieu de ValueError ?**
 La consigne l'exige (regle 86). En plus, ca permet de distinguer les erreurs metier des erreurs Python standard. Par exemple, `pytest.raises(TransicionIlegalError)` est plus explicite que `pytest.raises(ValueError)`.
@@ -159,10 +160,10 @@ La consigne l'exige (regle 86). En plus, ca permet de distinguer les erreurs met
 **Classes** :
 | Exception | Usage |
 |---|---|
-| `CalidadError` | Base commune de toutes les exceptions metier |
+| `CalidadError` | Base commune de toutes les exceptions metier (supporte `**detalles`) |
 | `DatosInvalidosError` | Donnees invalides (quantites, gravedades, textes vides) |
-| `EquipoNoAptoError` | Equipement non calibre ou categorie incompatible |
-| `CertificacionNoVigenteError` | Certification absente ou perimee a la date voulue |
+| `EquipoNoAptoError` | Equipement non calibre ou categorie incompatible (fournit `equipo_id`, `fecha`) |
+| `CertificacionNoVigenteError` | Certification absente ou perimee a la date voulue (fournit `profesional_id`) |
 | `TransicionIlegalError` | Transitions d'etat illegales (fermer une muestra deja fermee, capacite depassee) |
 | `InspeccionInvalidaError` | Operations sur inspection fermee |
 
@@ -374,15 +375,18 @@ C'est le pattern **"fail fast"**. Si les prerequis ne sont pas remplis, on n'a j
 
 **Specificites Python** :
 - **`raise NotImplementedError`** dans `evaluar()` : force les sous-classes a implementer la methode. C'est l'equivalent Python d'une methode abstraite
+- **Heritage et `**kwargs`** : son constructeur accepte `**kwargs` pour permettre l'heritage cooperatif Python
 - **Heritage** : `ProcedimientoDimensional(Procedimiento)` -- herite de la classe de base
 
 #### `proc_dimensional.py` -- ProcedimientoDimensional
 **Utilite** : Evalue des observations basees sur des mesures physiques (valeur vs tolerances).
 Pour chaque observation avec `desviacion > 0`, calcule la gravite basee sur le ratio desviacion/tolerancia et cree un `Defecto` de type `"DIMENSIONAL"`.
+- **Constructeur cooperatif `super().__init__(**kwargs)`** : intercepte son attribut propre `unidad_medida="mm"` et definit par defaut `categoria_equipo_requerida="Dimensional"` avant de transmettre les autres arguments a `super()`.
 
 #### `proc_visual.py` -- ProcedimientoVisual
 **Utilite** : Evalue des observations visuelles.
 Pour chaque observation avec `defecto_detectado == True`, cree un `Defecto` de type `"VISUAL"` avec la gravite indiquee.
+- **Constructeur cooperatif `super().__init__(**kwargs)`** : intercepte son attribut propre `nivel_iluminacion_minimo=None` et definit par defaut `categoria_equipo_requerida="Visual"`.
 
 #### Polymorphisme en action
 ```python
@@ -414,16 +418,13 @@ Que `self._procedimiento` soit un `ProcedimientoDimensional` ou `ProcedimientoVi
 
 **Specificites Python** :
 - **`dict` de `dict`** : `self._registros = {"lotes": {}, "muestras": {}, ...}` -- un registre central organise par categorie
-- **`**kwargs`** dans `crear_registrar_procedimiento` : permet de passer des arguments nommes variables sans figer la signature
-
-```python
-empresa.crear_registrar_procedimiento(
-    ProcedimientoVisual,
-    limite_gravedad_acumulada=5,
-    categoria_equipo_requerida="Visual",
-    certificacion_requerida="ISO"
-)
-```
+- **`**kwargs` dans `crear_registrar_procedimiento` (Factory)** : permet de passer des arguments nommes variables sans figer la signature de la methode
+- **`**filtros` dans les methodes de listing (Filtrage dynamique)** : `listar_lotes(**filtros)`, `listar_inspecciones(**filtros)` et `listar_muestras(**filtros)` permettent des requetes expressives (type Django ORM) :
+  ```python
+  empresa.listar_lotes(estado=EstadoLote.APROBADO)
+  empresa.listar_inspecciones(cerrada=True)
+  empresa.listar_muestras(estado=EstadoMuestra.NO_CONFORME)
+  ```
 
 ---
 
@@ -505,7 +506,7 @@ Dans cette architecture, la relation `Lote` / `Muestra` est une **composition st
 | **`all()`** | Lote.todas_cerradas | Court-circuit : s'arrete au premier False |
 | **`lambda`** | Partout avec map() | Fonction anonyme inline |
 | **`tuple()`** | Muestra.defectos, Lote.muestras, Reporte._defectos | Collection immutable |
-| **`**kwargs`** | Empresa.crear_registrar_procedimiento | Arguments nommes variables |
+| **`**kwargs`** | 1. Empresa.crear_registrar_procedimiento (Factory)<br>2. Procedimiento subclasses (`super().__init__(**kwargs)`)<br>3. Empresa.listar_* (`**filtros` dynamiques)<br>4. CalidadError (`**detalles` diagnostiques) | Flexibilite de passage d'arguments nommes, heritage cooperatif, requetes dynamiques et contexte d'erreur structure |
 | **`Enum`** | EstadoMuestra, EstadoLote | Constantes typees |
 | **`uuid.uuid4()`** | Toutes les classes avec id | Identifiants uniques universels |
 | **`@property`** | Toutes les classes | Encapsulation lecture seule |
