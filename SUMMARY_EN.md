@@ -162,6 +162,10 @@ With `dict(self._certificaciones)`, it's a copy: modifying the copy doesn't chan
 #### `muestra.py` -- Muestra
 **Purpose**: Represents a sample from the batch. Manages its own state transitions.
 
+**Strong binding with `Lote` (Composition)**:
+- `Muestra(cantidad, lote_id)` strictly requires `lote_id` at instantiation.
+- A sample **can never exist without a batch** (Assignment rule 2: *"Cada muestra pertenece a exactamente un lote"*). The attribute `_lote_id` is immutable and exposed read-only via `@property lote_id`.
+
 **Python Specifics**:
 - **`tuple(self._defectos)`**: returns an immutable version of the list. Prevents `muestra.defectos.append(x)` from outside
 - **`sum(map(lambda d: d.gravedad, self._defectos))`**:
@@ -193,6 +197,14 @@ Exists to **respect encapsulation**. Instead of `muestra._inspeccion = self` (di
 
 #### `lote.py` -- Lote
 **Purpose**: Represents a batch of components. Contains samples and decides approval/rejection.
+
+**Method `crear_muestra(cantidad)` (Composition)**:
+The `Lote` creates and owns its samples directly:
+1. Validates quantity using `validar_cantidad(cantidad)`
+2. Calculates capacity already in use using `sum(map(lambda m: m.cantidad, self._muestras.values()))`
+3. Checks that `capacidad_usada + cantidad <= cantidad_fabricada` (raises `TransicionIlegalError` otherwise)
+4. Instantiates `Muestra(cantidad, self._id)` and registers it in its internal dict `_muestras`
+5. Returns the `Muestra` instance
 
 **Python Specifics**:
 - **`dict` for `_muestras`**: `{muestra.id: muestra}` -- O(1) access by UUID
@@ -302,6 +314,9 @@ Whether `self._procedimiento` is a `ProcedimientoDimensional` or `ProcedimientoV
 #### `empresa.py` -- Empresa
 **Purpose**: Entry point for creating and registering all objects. **Facade** pattern.
 
+**Delegation of creation for composition**:
+- `crear_registrar_muestra(cantidad, lote)`: Empresa delegates sample creation to the `lote` via `lote.crear_muestra(cantidad)`, then registers the instance in `self._registros["muestras"][muestra.id]`. The batch retains direct ownership of the sample.
+
 **Python Specifics**:
 - **`dict` of `dict`**: `self._registros = {"lotes": {}, "muestras": {}, ...}` -- a central registry organized by category
 - **`**kwargs`** in `crear_registrar_procedimiento`: allows passing variable named arguments
@@ -330,7 +345,7 @@ Each procedure type may have different parameters. `**kwargs` allows passing any
 #### `main.py`
 **Purpose**: Demonstrates the complete workflow in 10 sequential steps:
 
-1. Create a batch + 20 samples
+1. Create a batch + 20 samples via `empresa.crear_registrar_muestra(50, lote)` (composition)
 2. Create professionals with certifications
 3. Create calibrated equipment
 4. Create procedures (visual + dimensional) via `**kwargs`
@@ -352,6 +367,7 @@ Each procedure type may have different parameters. `**kwargs` allows passing any
 
 | Relationship | Explanation | In Code |
 |---|---|---|
+| `Lote *-- Muestra` | A sample strictly belongs to exactly one batch from creation (Rule 2). The batch creates and controls its samples | `lote.crear_muestra(cantidad)` instantiates `Muestra(cantidad, self._id)` internally |
 | `Muestra *-- Defecto` | Defects only exist in the context of a sample | `self._defectos = []` -- the list is created in Muestra and belongs to Muestra |
 | `Profesional *-- Certificacion` | Certifications have no meaning without the professional | `self._certificaciones = {}` -- the dict is created in Profesional |
 | `Reporte *-- Defecto` | The report contains frozen copies of defects | `self._defectos = tuple(map(...))` -- copies created at construction |
@@ -359,9 +375,7 @@ Each procedure type may have different parameters. `**kwargs` allows passing any
 #### Aggregation (hollow diamond `o--`): "contains" -- independent lifecycle
 **Contents can exist without the container.**
 
-| Relationship | Explanation | In Code |
-|---|---|---|
-| `Lote o-- Muestra` | A sample is created before being added to a batch. It could theoretically exist alone | `lote.agregar_muestra(muestra)` -- the sample already exists |
+In this architecture, the `Lote` / `Muestra` relationship is a **strict composition** (`*--`) rather than an aggregation: a `Muestra` can never exist without its `Lote` (linked lifecycle, mandatory `lote_id` upon instantiation, honoring domain Rule 2).
 
 #### Association (arrow `-->`): "uses / references"
 **Simple reference, no linked lifecycle.**
@@ -420,9 +434,9 @@ Each procedure type may have different parameters. `**kwargs` allows passing any
 
 ```
 1. Empresa creates Lote(name, quantity)
-2. Empresa creates Muestra(quantity) x N
-3. Lote.agregar_muestra(muestra) -- checks capacity, assigns lote_id
-4. Empresa creates Profesional(name)
+2. Empresa creates samples via the batch: empresa.crear_registrar_muestra(quantity, lote)
+   --> Lote.crear_muestra(quantity) checks capacity and creates Muestra(quantity, lote.id) (composition)
+3. Empresa creates Profesional(name)
 5. Profesional.agregar_certificacion(Certificacion(name, start, end))
 6. Empresa creates Equipo(category, calibration_date)
 7. Empresa creates Procedimiento (Dimensional or Visual via **kwargs)

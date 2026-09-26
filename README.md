@@ -110,7 +110,7 @@ classDiagram
     class Empresa {
         -_registros : dict~str dict~
         +crear_registrar_lote(nombre_componentes str, cantidad_fabricada int) Lote
-        +crear_registrar_muestra(cantidad int) Muestra
+        +crear_registrar_muestra(cantidad int, lote Lote) Muestra
         +crear_registrar_profesional(nombre str) Profesional
         +crear_registrar_equipo(categoria str, fecha_calibracion date) Equipo
         +crear_registrar_procedimiento(tipo_procedimiento class, **kwargs) Procedimiento
@@ -174,7 +174,7 @@ classDiagram
         +lote_id : str
         +inspeccion : Inspeccion
         +reporte : Reporte
-        +asignar_lote(lote_id str)
+
         +asignar_inspeccion(inspeccion Inspeccion)
         +iniciar_inspeccion()
         +agregar_defecto(defecto Defecto)
@@ -198,7 +198,7 @@ classDiagram
         +cantidad_fabricada : int
         +estado : EstadoLote
         +muestras : tuple~Muestra~
-        +agregar_muestra(muestra Muestra)
+        +crear_muestra(cantidad int) Muestra
         +decidir() EstadoLote
         +porcentaje_no_conforme() float
         +todas_cerradas() bool
@@ -351,7 +351,7 @@ classDiagram
     %% ══════════════════════════════════════════════
 
     %% Estructura base
-    Lote "1" o-- "0..*" Muestra : contiene
+    Lote "1" *-- "1..*" Muestra : crea y contiene
     Muestra "1" *-- "0..*" Defecto : acumula
     Muestra "1" --> "0..1" Reporte : genera si NO_CONFORME
 

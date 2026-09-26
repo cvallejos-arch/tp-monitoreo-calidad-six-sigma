@@ -25,8 +25,7 @@ FECHA = date(2025, 6, 15)
 
 def _setup_basico(categoria="Visual", con_cert=False, cert_nombre=None):
     """Helper pour créer les objets de base d'une inspection."""
-    muestra = Muestra(50)
-    muestra.asignar_lote("L1")
+    muestra = Muestra(50, "L1")
     profesional = Profesional("Ana")
     equipo = Equipo(categoria, FECHA - timedelta(days=100))
 
@@ -76,8 +75,7 @@ class TestCreacionInspeccion:
 class TestCertificacion:
     def test_certificacion_ausente_rechazada(self):
         """Profesional sin ninguna certificación cuando el procedimiento la requiere."""
-        muestra = Muestra(50)
-        muestra.asignar_lote("L1")
+        muestra = Muestra(50, "L1")
         prof = Profesional("Ana")  # sin certificaciones
         equipo = Equipo("Visual", FECHA - timedelta(days=100))
         proc = ProcedimientoVisual(
@@ -90,8 +88,7 @@ class TestCertificacion:
 
     def test_certificacion_vencida_rechazada(self):
         """Certificación existente pero vencida."""
-        muestra = Muestra(50)
-        muestra.asignar_lote("L1")
+        muestra = Muestra(50, "L1")
         prof = Profesional("Ana")
         cert_vencida = Certificacion("ISO", date(2023, 1, 1), date(2023, 12, 31))
         prof.agregar_certificacion(cert_vencida)
@@ -117,8 +114,7 @@ class TestCertificacion:
 
     def test_inspeccion_rechazada_no_modifica_muestra(self):
         """Si se rechaza por certificación, la muestra queda PENDIENTE."""
-        muestra = Muestra(50)
-        muestra.asignar_lote("L1")
+        muestra = Muestra(50, "L1")
         prof = Profesional("Ana")  # sin cert
         equipo = Equipo("Visual", FECHA - timedelta(days=100))
         proc = ProcedimientoVisual(
@@ -133,8 +129,7 @@ class TestCertificacion:
 
 class TestEquipoValidacion:
     def test_equipo_categoria_incompatible(self):
-        muestra = Muestra(50)
-        muestra.asignar_lote("L1")
+        muestra = Muestra(50, "L1")
         prof = Profesional("Ana")
         equipo = Equipo("Dimensional", FECHA - timedelta(days=100))  # Dimensional ≠ Visual
         proc = ProcedimientoVisual(
@@ -145,8 +140,7 @@ class TestEquipoValidacion:
             Inspeccion(muestra, prof, equipo, proc, FECHA)
 
     def test_equipo_calibracion_vencida(self):
-        muestra = Muestra(50)
-        muestra.asignar_lote("L1")
+        muestra = Muestra(50, "L1")
         prof = Profesional("Ana")
         equipo = Equipo("Visual", FECHA - timedelta(days=183))  # 183 jours = vencido
         proc = ProcedimientoVisual(
@@ -158,8 +152,7 @@ class TestEquipoValidacion:
 
     def test_equipo_calibracion_exacta_182_dias(self):
         """182 días exactos = calibrado (borne inclusive)."""
-        muestra = Muestra(50)
-        muestra.asignar_lote("L1")
+        muestra = Muestra(50, "L1")
         prof = Profesional("Ana")
         equipo = Equipo("Visual", FECHA - timedelta(days=182))
         proc = ProcedimientoVisual(
@@ -202,8 +195,7 @@ class TestEjecucionInspeccion:
             insp.cerrar()
 
     def test_ejecutar_dimensional(self):
-        muestra = Muestra(50)
-        muestra.asignar_lote("L1")
+        muestra = Muestra(50, "L1")
         prof = Profesional("Ana")
         equipo = Equipo("Dimensional", FECHA - timedelta(days=100))
         proc = ProcedimientoDimensional(

@@ -33,13 +33,12 @@ def main():
     lote = empresa.crear_registrar_lote("Tornillos", 1000)
     print(f"Lote creado: {lote}")
 
-    # Crear 20 muestras de 50 unidades cada una
+    # Crear 20 muestras de 50 unidades cada una (composicion: el lote crea sus muestras)
     muestras = []
     for i in range(20):
-        m = empresa.crear_registrar_muestra(50)
-        lote.agregar_muestra(m)
+        m = empresa.crear_registrar_muestra(50, lote)
         muestras.append(m)
-    print(f"Se agregaron {len(muestras)} muestras al lote")
+    print(f"Se crearon {len(muestras)} muestras en el lote")
     print(f"Capacidad usada: {sum(m.cantidad for m in muestras)}/{lote.cantidad_fabricada}")
 
     # ============================================================

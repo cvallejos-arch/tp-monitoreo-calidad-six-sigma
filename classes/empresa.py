@@ -25,9 +25,9 @@ class Empresa:
         self._registros["lotes"][lote.id] = lote
         return lote
 
-    def crear_registrar_muestra(self, cantidad):
-        """Crea y registra una muestra en el sistema."""
-        muestra = Muestra(cantidad)
+    def crear_registrar_muestra(self, cantidad, lote):
+        """Crea una muestra dentro de un lote y la registra (composicion)."""
+        muestra = lote.crear_muestra(cantidad)
         self._registros["muestras"][muestra.id] = muestra
         return muestra
 

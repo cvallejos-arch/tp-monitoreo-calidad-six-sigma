@@ -162,6 +162,10 @@ Con `dict(self._certificaciones)`, es una copia: modificar la copia no cambia el
 #### `muestra.py` -- Muestra
 **Utilidad**: Representa un subconjunto del lote. Gestiona sus propias transiciones de estado.
 
+**Vinculo fuerte con `Lote` (Composicion)**:
+- `Muestra(cantidad, lote_id)` exige obligatoriamente `lote_id` desde la construccion.
+- Una muestra **nunca puede existir sin lote** (Regla 2 de la consigna: *"Cada muestra pertenece a exactamente un lote"*). El atributo `_lote_id` es inmutable y expuesto en solo lectura via `@property lote_id`.
+
 **Especificidades Python**:
 - **`tuple(self._defectos)`**: retorna una version inmutable de la lista. Impide `muestra.defectos.append(x)` desde afuera
 - **`sum(map(lambda d: d.gravedad, self._defectos))`**:
@@ -193,6 +197,14 @@ Existe para **respetar la encapsulacion**. En lugar de `muestra._inspeccion = se
 
 #### `lote.py` -- Lote
 **Utilidad**: Representa un lote de componentes. Contiene muestras y decide la aprobacion/rechazo.
+
+**Metodo `crear_muestra(cantidad)` (Composicion)**:
+Es el `Lote` quien crea directamente sus propias muestras:
+1. Valida la cantidad con `validar_cantidad(cantidad)`
+2. Calcula la capacidad ya utilizada mediante `sum(map(lambda m: m.cantidad, self._muestras.values()))`
+3. Verifica que `capacidad_usada + cantidad <= cantidad_fabricada` (lanza `TransicionIlegalError` si excede)
+4. Instancia `Muestra(cantidad, self._id)` y la registra en su dict `_muestras`
+5. Retorna la instancia de `Muestra`
 
 **Especificidades Python**:
 - **`dict` para `_muestras`**: `{muestra.id: muestra}` -- acceso O(1) por UUID
@@ -302,6 +314,9 @@ Sea `self._procedimiento` un `ProcedimientoDimensional` o `ProcedimientoVisual`,
 #### `empresa.py` -- Empresa
 **Utilidad**: Punto de entrada para crear y registrar todos los objetos. Patron **Fachada (Facade)**.
 
+**Delegacion de creacion para la composicion**:
+- `crear_registrar_muestra(cantidad, lote)`: Empresa delega la creacion al `lote` mediante `lote.crear_muestra(cantidad)`, y luego registra la instancia en `self._registros["muestras"][muestra.id]`. El lote mantiene la propiedad y control directo de la muestra.
+
 **Especificidades Python**:
 - **`dict` de `dict`**: `self._registros = {"lotes": {}, "muestras": {}, ...}` -- un registro central organizado por categoria
 - **`**kwargs`** en `crear_registrar_procedimiento`: permite pasar argumentos nombrados variables
@@ -330,7 +345,7 @@ Cada tipo de procedimiento puede tener parametros diferentes. `**kwargs` permite
 #### `main.py`
 **Utilidad**: Demuestra el flujo completo en 10 etapas secuenciales:
 
-1. Crear un lote + 20 muestras
+1. Crear un lote + 20 muestras via `empresa.crear_registrar_muestra(50, lote)` (composicion)
 2. Crear profesionales con certificaciones
 3. Crear equipos calibrados
 4. Crear procedimientos (visual + dimensional) via `**kwargs`
@@ -352,6 +367,7 @@ Cada tipo de procedimiento puede tener parametros diferentes. `**kwargs` permite
 
 | Relacion | Explicacion | En el codigo |
 |---|---|---|
+| `Lote *-- Muestra` | Una muestra pertenece obligatoriamente a exactamente un lote desde su creacion (Regla 2). El lote crea y controla sus muestras | `lote.crear_muestra(cantidad)` instancia `Muestra(cantidad, self._id)` internamente |
 | `Muestra *-- Defecto` | Los defectos solo existen en el contexto de una muestra | `self._defectos = []` -- la lista se crea en Muestra y pertenece a Muestra |
 | `Profesional *-- Certificacion` | Las certificaciones no tienen sentido sin el profesional | `self._certificaciones = {}` -- el dict se crea en Profesional |
 | `Reporte *-- Defecto` | El reporte contiene copias fijas de los defectos | `self._defectos = tuple(map(...))` -- copias creadas en la construccion |
@@ -359,9 +375,7 @@ Cada tipo de procedimiento puede tener parametros diferentes. `**kwargs` permite
 #### Agregacion (rombo blanco `o--`): "contiene" -- ciclo de vida independiente
 **Los contenidos pueden existir sin el contenedor.**
 
-| Relacion | Explicacion | En el codigo |
-|---|---|---|
-| `Lote o-- Muestra` | Una muestra se crea antes de ser agregada al lote. Podria teoricamente existir sola | `lote.agregar_muestra(muestra)` -- la muestra ya existe |
+En esta arquitectura, la relacion `Lote` / `Muestra` es una **composicion estricta** (`*--`) y no una agregacion: una `Muestra` nunca puede existir sin su `Lote` (ciclo de vida ligado, `lote_id` obligatorio desde la instanciacion, respetando la Regla 2 del dominio).
 
 #### Asociacion (flecha `-->`): "usa / referencia"
 **Simple referencia, sin ciclo de vida ligado.**
@@ -420,9 +434,9 @@ Cada tipo de procedimiento puede tener parametros diferentes. `**kwargs` permite
 
 ```
 1. Empresa crea Lote(nombre, cantidad)
-2. Empresa crea Muestra(cantidad) x N
-3. Lote.agregar_muestra(muestra) -- verifica capacidad, asigna lote_id
-4. Empresa crea Profesional(nombre)
+2. Empresa crea las muestras a traves del lote: empresa.crear_registrar_muestra(cantidad, lote)
+   --> Lote.crear_muestra(cantidad) verifica capacidad y crea Muestra(cantidad, lote.id) (composicion)
+3. Empresa crea Profesional(nombre)
 5. Profesional.agregar_certificacion(Certificacion(nombre, inicio, fin))
 6. Empresa crea Equipo(categoria, fecha_calibracion)
 7. Empresa crea Procedimiento (Dimensional o Visual via **kwargs)

@@ -36,26 +36,24 @@ class Lote:
         """Retorna una tupla inmutable de las muestras del lote."""
         return tuple(self._muestras.values())
 
-    def agregar_muestra(self, muestra):
-        """Agrega una muestra al lote con las validaciones de negocio."""
-        if muestra.id in self._muestras:
-            raise DatosInvalidosError(
-                f"La muestra '{muestra.id}' ya existe en el lote '{self._id}'."
-            )
+    def crear_muestra(self, cantidad):
+        """Crea una muestra que pertenece a este lote (composicion).
+        Valida que la capacidad no se exceda."""
+        validar_cantidad(cantidad)
 
         # Calcular capacidad utilizada usando sum() + map()
         capacidad_usada = sum(map(lambda m: m.cantidad, self._muestras.values()))
 
-        if capacidad_usada + muestra.cantidad > self._cantidad_fabricada:
+        if capacidad_usada + cantidad > self._cantidad_fabricada:
             raise TransicionIlegalError(
-                f"No se puede agregar la muestra '{muestra.id}' "
-                f"(cantidad={muestra.cantidad}): la suma de cantidades "
-                f"({capacidad_usada + muestra.cantidad}) excede la cantidad "
+                f"No se puede crear una muestra de {cantidad} unidades: "
+                f"la suma ({capacidad_usada + cantidad}) excede la cantidad "
                 f"fabricada ({self._cantidad_fabricada})."
             )
 
-        muestra.asignar_lote(self._id)
+        muestra = Muestra(cantidad, self._id)
         self._muestras[muestra.id] = muestra
+        return muestra
 
     def decidir(self):
         """Decide el estado del lote basado en el porcentaje de muestras no conformes.

@@ -1,4 +1,4 @@
-"""Tests de Lote: création, ajout muestras, excès capacité, décision 5%, conteo."""
+"""Tests de Lote: creation, creation de muestras (composicion), capacite, decision 5%, conteo."""
 import pytest
 from datetime import date
 
@@ -31,36 +31,36 @@ class TestCreacionLote:
             Lote("", 1000)
 
 
-class TestAgregarMuestra:
-    def test_agregar_muestra_valida(self):
+class TestCrearMuestra:
+    def test_crear_muestra_valida(self):
+        """Composicion: el lote crea su propia muestra."""
         lote = Lote("Tornillos", 1000)
-        m = Muestra(50)
-        lote.agregar_muestra(m)
+        m = lote.crear_muestra(50)
         assert len(lote.muestras) == 1
         assert m.lote_id == lote.id
 
-    def test_agregar_muestra_duplicada_rechazada(self):
+    def test_muestra_pertenece_al_lote(self):
+        """La muestra creada tiene el lote_id correcto."""
         lote = Lote("Tornillos", 1000)
-        m = Muestra(50)
-        lote.agregar_muestra(m)
-        with pytest.raises(DatosInvalidosError):
-            lote.agregar_muestra(m)
+        m = lote.crear_muestra(50)
+        assert m.lote_id == lote.id
 
-    def test_agregar_muestra_excede_capacidad(self):
+    def test_crear_muestra_excede_capacidad(self):
         lote = Lote("Tornillos", 100)
-        m1 = Muestra(60)
-        m2 = Muestra(50)
-        lote.agregar_muestra(m1)
+        lote.crear_muestra(60)
         with pytest.raises(TransicionIlegalError):
-            lote.agregar_muestra(m2)
+            lote.crear_muestra(50)
 
-    def test_agregar_multiples_muestras_hasta_limite(self):
+    def test_crear_multiples_muestras_hasta_limite(self):
         lote = Lote("Tornillos", 100)
-        m1 = Muestra(50)
-        m2 = Muestra(50)
-        lote.agregar_muestra(m1)
-        lote.agregar_muestra(m2)
+        lote.crear_muestra(50)
+        lote.crear_muestra(50)
         assert len(lote.muestras) == 2
+
+    def test_crear_muestra_cantidad_invalida(self):
+        lote = Lote("Tornillos", 1000)
+        with pytest.raises(DatosInvalidosError):
+            lote.crear_muestra(0)
 
 
 def _cerrar_muestra_conforme(muestra):
@@ -85,17 +85,14 @@ def _cerrar_muestra_no_conforme(muestra):
 class TestDecisionLote:
     def test_lote_aprobado_0_porciento(self):
         lote = Lote("Tornillos", 1000)
-        m = Muestra(50)
-        lote.agregar_muestra(m)
+        m = lote.crear_muestra(50)
         _cerrar_muestra_conforme(m)
         assert lote.decidir() == EstadoLote.APROBADO
 
     def test_lote_aprobado_exactamente_5_porciento(self):
-        """Exactement 5% (1/20) → APROBADO (no estrictamente mayor)."""
+        """Exactement 5% (1/20) -> APROBADO (no estrictamente mayor)."""
         lote = Lote("Tornillos", 1000)
-        muestras = [Muestra(50) for _ in range(20)]
-        for m in muestras:
-            lote.agregar_muestra(m)
+        muestras = [lote.crear_muestra(50) for _ in range(20)]
 
         # 1 no conforme, 19 conformes = 5%
         _cerrar_muestra_no_conforme(muestras[0])
@@ -106,11 +103,9 @@ class TestDecisionLote:
         assert lote.decidir() == EstadoLote.APROBADO
 
     def test_lote_rechazado_mas_de_5_porciento(self):
-        """Más de 5% → RECHAZADO."""
+        """Mas de 5% -> RECHAZADO."""
         lote = Lote("Tornillos", 1000)
-        muestras = [Muestra(50) for _ in range(20)]
-        for m in muestras:
-            lote.agregar_muestra(m)
+        muestras = [lote.crear_muestra(50) for _ in range(20)]
 
         # 2 no conformes, 18 conformes = 10%
         _cerrar_muestra_no_conforme(muestras[0])
@@ -129,15 +124,13 @@ class TestDecisionLote:
     def test_decidir_lote_incompleto_rechazado(self):
         """Lote con muestras no cerradas."""
         lote = Lote("Tornillos", 1000)
-        m = Muestra(50)
-        lote.agregar_muestra(m)
+        lote.crear_muestra(50)
         with pytest.raises(TransicionIlegalError):
             lote.decidir()
 
     def test_decidir_lote_ya_decidido_rechazado(self):
         lote = Lote("Tornillos", 1000)
-        m = Muestra(50)
-        lote.agregar_muestra(m)
+        m = lote.crear_muestra(50)
         _cerrar_muestra_conforme(m)
         lote.decidir()
         with pytest.raises(TransicionIlegalError):
@@ -145,8 +138,7 @@ class TestDecisionLote:
 
     def test_decision_es_final(self):
         lote = Lote("Tornillos", 1000)
-        m = Muestra(50)
-        lote.agregar_muestra(m)
+        m = lote.crear_muestra(50)
         _cerrar_muestra_conforme(m)
         lote.decidir()
         assert lote.estado == EstadoLote.APROBADO
@@ -155,21 +147,19 @@ class TestDecisionLote:
 class TestConsultasLote:
     def test_total_defectos_criticos(self):
         lote = Lote("Tornillos", 1000)
-        m = Muestra(50)
-        lote.agregar_muestra(m)
+        m = lote.crear_muestra(50)
         m.iniciar_inspeccion()
         m._inspeccion = type('obj', (object,), {
             'profesional_id': 'p1', 'fecha': date(2025, 6, 15)
         })()
         m.agregar_defecto(Defecto("VISUAL", "Critico", 5))
         m.agregar_defecto(Defecto("VISUAL", "Leve", 2))
-        m.cerrar(4)  # no conforme por crítico
+        m.cerrar(4)  # no conforme por critico
         assert lote.total_defectos_criticos() == 1
 
     def test_conteo_por_tipo(self):
         lote = Lote("Tornillos", 1000)
-        m = Muestra(50)
-        lote.agregar_muestra(m)
+        m = lote.crear_muestra(50)
         m.iniciar_inspeccion()
         m._inspeccion = type('obj', (object,), {
             'profesional_id': 'p1', 'fecha': date(2025, 6, 15)
@@ -182,10 +172,8 @@ class TestConsultasLote:
         assert conteo == {"VISUAL": 2, "DIMENSIONAL": 1}
 
     def test_conteo_criticos_sin_efectos_secundarios(self):
-        """Las consultas no cambian el estado del lote, las muestras ni los defectos."""
         lote = Lote("Tornillos", 1000)
-        m = Muestra(50)
-        lote.agregar_muestra(m)
+        m = lote.crear_muestra(50)
         _cerrar_muestra_conforme(m)
 
         estado_antes = lote.estado
@@ -193,15 +181,11 @@ class TestConsultasLote:
         _ = lote.conteo_por_tipo()
         _ = lote.porcentaje_no_conforme()
         assert lote.estado == estado_antes
-        assert m.estado == m.estado  # sin cambio
 
     def test_conteo_ignora_muestras_no_cerradas(self):
         lote = Lote("Tornillos", 1000)
-        m_cerrada = Muestra(50)
-        m_pendiente = Muestra(50)
-        lote.agregar_muestra(m_cerrada)
-        lote.agregar_muestra(m_pendiente)
+        m_cerrada = lote.crear_muestra(50)
+        lote.crear_muestra(50)  # m_pendiente, no cerrada
         _cerrar_muestra_conforme(m_cerrada)
-        # m_pendiente no está cerrada, no debería contarse
         assert lote.total_defectos_criticos() == 0
         assert lote.conteo_por_tipo() == {}

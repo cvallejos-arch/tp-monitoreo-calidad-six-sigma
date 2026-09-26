@@ -6,12 +6,12 @@ import uuid
 
 
 class Muestra:
-    def __init__(self, cantidad):
+    def __init__(self, cantidad, lote_id):
         self._id = uuid.uuid4()
         self._cantidad = validar_cantidad(cantidad)
+        self._lote_id = lote_id
         self._estado = EstadoMuestra.PENDIENTE
         self._defectos = []
-        self._lote_id = None
         self._inspeccion = None
         self._reporte = None
 
@@ -43,17 +43,6 @@ class Muestra:
     @property
     def reporte(self):
         return self._reporte
-
-    # --- Gestión de la pertenencia al lote ---
-
-    def asignar_lote(self, lote_id):
-        """Asigna la muestra a un lote. Una muestra no puede moverse a otro lote."""
-        if self._lote_id is not None:
-            raise TransicionIlegalError(
-                f"La muestra '{self._id}' ya pertenece al lote "
-                f"'{self._lote_id}' y no puede moverse a '{lote_id}'."
-            )
-        self._lote_id = lote_id
 
     def asignar_inspeccion(self, inspeccion):
         """Asigna la inspección a la muestra (encapsulación correcta)."""

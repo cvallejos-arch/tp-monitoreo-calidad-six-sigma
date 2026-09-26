@@ -40,7 +40,7 @@ def defecto_critico():
 
 @pytest.fixture
 def muestra():
-    return Muestra(50)
+    return Muestra(50, "L1")
 
 
 @pytest.fixture
