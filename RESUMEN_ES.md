@@ -12,359 +12,298 @@ Construir un **prototipo** que:
 - Ejecute procedimientos con comportamientos de evaluacion **diferentes** (polimorfismo)
 - Registre defectos y cierre muestras mediante **transiciones de estado controladas**
 - Emita reportes de desviacion trazables
-- Decida un lote **solo** cuando todas sus muestras esten inspeccionadas
+- Decida un lote **unicamente** cuando todas sus muestras esten inspeccionadas
 
 ### Reglas de negocio clave
 - Gravedad: entero de 1 a 5 (5 = critico)
-- Calibracion valida: `fecha_inspeccion - fecha_calibracion <= 182 dias` (bornes inclusivos)
+- Calibracion valida: `fecha_inspeccion - fecha_calibracion <= 182 dias` (limites inclusivos)
 - Conformidad: `NO_CONFORME` si defecto critico O suma gravedades > limite
-- Decision del lote: `RECHAZADO` si % no conforme > 5%, sino `APROBADO` (5% exacto = APROBADO)
+- Decision del lote: `RECHAZADO` si % no conforme > 5%, de lo contrario `APROBADO` (5% exacto = APROBADO)
 
 ---
 
-## 2. Arquitectura y Archivos
+## 2. Logica de Funcionamiento Global: ¿Quien crea que, en que orden y por que?
 
-### 2.1 Archivos base
+Para comprender adecuadamente la arquitectura del proyecto, es fundamental visualizar el **ciclo de vida operativo** del sistema industrial: que componente interviene, quien es responsable de la instanciacion y por que este orden cronologico es indispensable para satisfacer las reglas del dominio.
+
+```
+       ┌────────────────────────────────────────────────────────┐
+       │                  EMPRESA (Fachada)                     │
+       │ Punto de entrada unico para inicializar y registrar    │
+       └────┬──────────────┬───────────────┬──────────────┬─────┘
+            │ 1            │ 2             │ 3            │ 4
+            ▼              ▼               ▼              ▼
+       ┌─────────┐   ┌────────────┐   ┌─────────┐  ┌──────────────┐
+       │  LOTE   │   │PROFESIONAL │   │ EQUIPO  │  │PROCEDIMIENTO │
+       └────┬────┘   └─────┬──────┘   └────┬────┘  └──────┬───────┘
+            │ crea         │ posee         │ apto         │ reglas
+            ▼ (compos.)    ▼               │              │
+       ┌─────────┐   ┌────────────┐        │              │
+       │ MUESTRA │   │CERTIFICAC. │        │              │
+       └────┬────┘   └─────┬──────┘        │              │
+            │              │               │              │
+            └──────────────┼───────────────┼──────────────┘
+                           │ 5. Lanzamiento
+                           ▼
+                  ┌──────────────────┐
+                  │    INSPECCION    │ ───► Valida requisitos "Fail-Fast"
+                  └────────┬─────────┘      (calibracion, certif, compatibilidad)
+                           │ 6. Ejecucion
+                           ▼
+                  ┌──────────────────┐
+                  │ OBSERVACIONES    │ ───► Evaluadas polimorficamente
+                  └────────┬─────────┘      genera DEFECTOS
+                           │ 7. Cierre
+                           ▼
+                  ┌──────────────────┐
+                  │ MUESTRA (Cierre) │ ───► CONFORME o NO_CONFORME
+                  └────────┬─────────┘      (crea REPORTE si NO_CONFORME)
+                           │ 8. Veredicto final
+                           ▼
+                  ┌──────────────────┐
+                  │  LOTE (Decision) │ ───► APROBADO (<=5%) o RECHAZADO (>5%)
+                  └──────────────────┘
+```
+
+### 2.1 Los Actores y sus Responsabilidades en el flujo
+
+1. **La Fachada (`Empresa`)**: Es el orquestador global. En lugar de que el codigo cliente instancie manualmente cada objeto conociendo detalles internos, `Empresa` provee una API unificada (`crear_registrar_*`, `lanzar_inspeccion`). Centraliza todos los registros en diccionarios categorizados.
+2. **La Produccion (`Lote` y `Muestra`)**: El nucleo manufacturero. El lote representa la partida completa de componentes fabricados. Las muestras son subconjuntos extraidos para ensaye.
+3. **Los Recursos de Control (`Profesional` + `Certificacion`, `Equipo`)**: El personal tecnico y el instrumental de medicion que deben contar con vigencia formal en la fecha del control.
+4. **El Marco Normativo (`Procedimiento`)**: Reglas tecnicas de evaluacion (visual o dimensional) con sus limites de gravedad acumulada y tolerancias.
+5. **El Evento Transaccional (`Inspeccion`)**: La sesion de evaluacion que une a una muestra, un profesional calificado, un equipo calibrado y un procedimiento especifico en una fecha determinada.
+6. **El Respaldo Documental (`Reporte` y `Defecto`)**: Evidencia inalterable y congelada de las causas de cualquier rechazo.
+
+---
+
+### 2.2 Desarrollo cronologico detallado: ¿Quien crea que y por que?
+
+#### 1. Creacion del Lote (`Lote`) y de sus Muestras (`Muestra`) -- *Composicion estricta*
+- **¿Quien crea?** La empresa instancia el `Lote` (`empresa.crear_registrar_lote`). Luego, para crear las muestras, la empresa **delega la creacion directamente al lote** (`empresa.crear_registrar_muestra(cantidad, lote)` que invoca a `lote.crear_muestra(cantidad)`).
+- **¿Por que en este orden?**
+  - **Sentido del dominio**: Una muestra fisica no puede existir suspendida en la nada; es por definicion un subconjunto de un lote especifico.
+  - **Regla 2 de la consigna**: *"Cada muestra pertenece a exactamente un lote"*.
+  - **Validacion de capacidad**: El lote debe existir previamente para constatar que la sumatoria de muestras no exceda la cantidad fabricada (`capacidad_usada + cantidad <= cantidad_fabricada`).
+  - **Ciclo de vida ligado (Composicion)**: El identificador `_lote_id` queda establecido desde la construccion de la muestra y es inmutable.
+
+#### 2. Registro de Inspectores (`Profesional`) y sus Certificaciones (`Certificacion`)
+- **¿Quien crea?** La empresa registra al `Profesional`. Luego se le incorporan las certificaciones vigentes (`prof.agregar_certificacion(cert)`).
+- **¿Por que en este orden?**
+  - Una certificacion carece de validez sin estar adjudicada a un profesional individual.
+  - La acreditacion debe estar registrada **antes** de intentar inspeccionar para que el sistema valide si el profesional esta habilitado a la fecha de la prueba.
+
+#### 3. Registro de Instrumentos de Medicion (`Equipo`) y Calibracion
+- **¿Quien crea?** La empresa registra cada equipo con su categoria tecnica (ej: `"Visual"`, `"Dimensional"`) y su fecha de calibracion.
+- **¿Por que en este orden?**
+  - Ninguna medicion de calidad es valida si el instrumento no esta registrado y debidamente calibrado (maximo 182 dias de antiguedad). El equipo debe estar disponible de antemano.
+
+#### 4. Definicion de Procedimientos de Inspeccion (`Procedimiento`)
+- **¿Quien crea?** La empresa configura las instancias de procedimientos concretos (`ProcedimientoVisual`, `ProcedimientoDimensional`) usando `**kwargs`.
+- **¿Por que en este orden?**
+  - El procedimiento establece las condiciones normativas: que tipo de equipo requiere, que certificacion exige y cual es el umbral de gravedad permitida. Sin esto, la inspeccion no posee criterios sobre los cuales evaluar.
+
+#### 5. Lanzamiento de la Inspeccion (`Inspeccion`) -- *Validacion cruzada "Fail-Fast"*
+- **¿Quien crea?** La empresa ejecuta `empresa.lanzar_inspeccion(muestra, profesional, equipo, procedimiento, fecha)`.
+- **¿Por que aqui y como?**
+  - Es el punto de validacion de integridad. El constructor de `Inspeccion` aplica el patron **Fail-Fast**:
+    1. Verifica que la muestra se encuentre en estado `PENDIENTE`.
+    2. Verifica que el profesional cuente con la certificacion requerida activa a la fecha indicada (`es_vigente(fecha)`).
+    3. Verifica que el equipo pertenezca a la categoria que exige el procedimiento (`es_compatible()`).
+    4. Verifica que el equipo tenga calibracion vigente ($\le 182$ dias) a la fecha (`esta_calibrado(fecha)`).
+  - **Si alguna condicion no se cumple**: se lanza de inmediato la excepcion correspondiente, el objeto `Inspeccion` nunca llega a crearse y la muestra permanece intacta en `PENDIENTE` (Regla 5).
+  - **Si todo es correcto**: la muestra avanza al estado `EN_INSPECCION` y se asocia a la inspeccion (`asignar_inspeccion`). El contexto queda congelado.
+
+#### 6. Evaluacion de Observaciones y Deteccion de Defectos (`Defecto`) -- *Polimorfismo*
+- **¿Quien hace que?** Se ingresan observaciones a `inspeccion.ejecutar(observaciones)`.
+- **¿Por que el polimorfismo?**
+  - La inspeccion delega ciegamente a `self._procedimiento.evaluar(observaciones)`.
+  - Si es dimensional, compara medidas contra tolerancias y calcula la gravedad segun la desviacion.
+  - Si es visual, identifica anomalias cualitativas y las asigna con su severidad.
+  - Cada defecto hallado se acumula en la muestra (`muestra.agregar_defecto(defecto)`).
+
+#### 7. Cierre de la Muestra y Trazabilidad (`Reporte`)
+- **¿Quien hace que?** Se ejecuta `inspeccion.cerrar()`, lo que dispara `muestra.cerrar(limite_gravedad)`.
+- **¿Por que y cual es el efecto?**
+  - La muestra determina su estado final:
+    - Si contiene algun defecto critico (gravedad = 5) O si la suma de gravedades supera el limite del procedimiento $\rightarrow$ `NO_CONFORME`.
+    - De lo contrario $\rightarrow$ `CONFORME`.
+  - **Generacion automatica de `Reporte`**: Si la muestra resulta `NO_CONFORME`, se genera un reporte inmutable con copias estaticas de los defectos, fecha, lote y responsable.
+  - La muestra queda cerrada e inmutable (se bloquean modificaciones o nuevas inspecciones).
+
+#### 8. Decision Final sobre el Lote (`Lote.decidir()`) -- *Criterio Six Sigma*
+- **¿Quien decide?** El propio `Lote`.
+- **¿Por que al final?**
+  - No puede decidirse un lote incompleto. Verifica que **todas** sus muestras esten cerradas (`todas_cerradas() == True`).
+  - Calcula el porcentaje de no conformidad (`porcentaje_no_conforme()`).
+  - Si es $> 5\%$ $\rightarrow$ `RECHAZADO`. Si es $\le 5\%$ (5% exacto inclusive) $\rightarrow$ `APROBADO`.
+  - El lote asume un estado definitivo e irreversible.
+
+---
+
+## 3. Arquitectura Detallada y Analisis de Archivos
+
+Una vez comprendida la logica global, examinamos cada archivo, sus elecciones de diseño y especificidades tecnicas en Python.
+
+### 3.1 Archivos base
 
 #### `excepciones.py` -- Excepciones custom
 **Utilidad**: Definir excepciones de dominio especificas en lugar de usar `ValueError` generico.
 
 **Especificidades Python**:
-- **Herencia de clases**: todas heredan de `CalidadError` que hereda de `Exception`
-- **Jerarquia de excepciones**: permite capturar `CalidadError` para atrapar TODOS los errores del dominio, o capturar una excepcion especifica
+- **Herencia de clases**: todas heredan de `CalidadError`, que hereda de `Exception`
+- **Jerarquia de excepciones**: permite capturar `CalidadError` para atrapar TODAS las fallas del dominio, o capturar un tipo exacto
 
-**Por que custom en lugar de ValueError?**
-La consigna lo exige (regla 86). Ademas, permite distinguir los errores de negocio de los errores estandar de Python. Por ejemplo, `pytest.raises(TransicionIlegalError)` es mas explicito que `pytest.raises(ValueError)`.
+**¿Por que custom en lugar de ValueError?**
+La consigna lo exige (regla 86). Facilita discriminar errores de logica de negocio de fallas genericas del interprete.
 
 **Clases**:
 | Excepcion | Uso |
 |---|---|
-| `CalidadError` | Base comun |
-| `DatosInvalidosError` | Datos invalidos (cantidades, gravedades, textos vacios) |
-| `EquipoNoAptoError` | Equipo no calibrado o categoria incompatible |
-| `CertificacionNoVigenteError` | Certificacion ausente o vencida |
-| `TransicionIlegalError` | Transiciones de estado ilegales (cerrar una muestra ya cerrada) |
-| `InspeccionInvalidaError` | Operaciones sobre inspeccion cerrada |
+| `CalidadError` | Clase base comun |
+| `DatosInvalidosError` | Datos fuera de formato o rango (cantidades, gravedades, textos vacios) |
+| `EquipoNoAptoError` | Equipo descalibrado o categoria incompatible |
+| `CertificacionNoVigenteError` | Certificacion ausente o caducada a la fecha de control |
+| `TransicionIlegalError` | Cambios de estado no permitidos (cerrar muestra ya cerrada, capacidad superada) |
+| `InspeccionInvalidaError` | Intentos de operar sobre inspeccion cerrada |
 
 ---
 
 #### `validacion.py` -- Funciones de validacion centralizadas
-**Utilidad**: Centralizar TODA la logica de validacion en un solo lugar (principio DRY). Cada clase llama a estas funciones en lugar de duplicar las verificaciones.
+**Utilidad**: Centralizar la logica de validacion (principio DRY). Cada clase recurre a estas funciones evitando duplicacion.
 
 **Especificidades Python**:
-- **Funciones puras** (sin clases): cada funcion toma un valor, lo valida y lo retorna o lanza una excepcion
-- **`isinstance(valor, int) or isinstance(valor, bool)`**: en Python, `bool` es subclase de `int` (`True == 1`). Hay que excluir explicitamente los booleanos
-- **f-strings**: `f"El campo '{nombre_campo}'..."` -- interpolacion de variables en cadenas
+- **Funciones puras**: reciben un valor, validan y retornan o lanzan excepcion
+- **`isinstance(valor, int) or isinstance(valor, bool)`**: en Python, `bool` hereda de `int` (`True == 1`). Debe descartarse explcitamente el booleano
+- **f-strings**: interpolacion eficiente y limpia
 
-**Por que retornar el valor?**
-Para poder escribir `self._cantidad = validar_cantidad(cantidad)` en una sola linea (patron "validate and assign").
+**¿Por que retornar el valor?**
+Permite la asignacion directa: `self._cantidad = validar_cantidad(cantidad)`.
 
 **Funciones**:
 | Funcion | Valida | Retorna |
 |---|---|---|
-| `validar_entero(valor)` | Es un int (no bool) | El valor |
+| `validar_entero(valor)` | Es int (no bool) | El valor |
 | `validar_cantidad(cantidad)` | Int > 0 | El valor |
 | `validar_gravedad(gravedad)` | Int entre 1 y 5 | El valor |
-| `validar_texto(texto)` | String no vacio, solo letras | El valor |
-| `validar_descripcion(descripcion)` | String no vacio (acepta numeros) | El valor |
+| `validar_texto(texto)` | String no vacio, solo caracteres alfabeticos | El valor |
+| `validar_descripcion(descripcion)` | String no vacio (acepta digitos) | El valor |
 | `validar_fecha_tipo(fecha)` | Instancia de `date` | El valor |
-| `validar_rango_fechas(inicio, fin)` | inicio <= fin | Nada |
+| `validar_rango_fechas(inicio, fin)` | inicio <= fin | None |
 | `validar_rango_entero(valor, min, max)` | Int en [min, max] | El valor |
 
 ---
 
-### 2.2 Enums
+### 3.2 Enums
 
 #### `estado_muestra.py` y `estado_lote.py`
-**Utilidad**: Representar los estados posibles de una muestra y un lote como constantes inmutables.
+**Utilidad**: Modelar los estados finitos de muestras y lotes mediante constantes inmutables.
 
 **Especificidades Python**:
-- **`Enum`** (de `enum`): impide usar strings crudos como `"PENDIENTE"`. Compara por identidad (`==`) en lugar de comparar strings
-- **`.value`**: retorna el string asociado (para visualizacion)
-
-**Por que Enum en lugar de strings?**
-- Autocompletado en el IDE
-- Error de compilacion si se escribe `EstadoMuestra.PENDIETE` (typo) vs sin error con `"PENDIETE"`
-- Garantia de que solo los valores definidos son posibles
+- **`Enum`**: previene el empleo de cadenas libres. Valida por identidad (`==`)
+- **`.value`**: expone el texto representativo
 
 ---
 
-### 2.3 Clases de dominio
+### 3.3 Clases de dominio
 
 #### `defecto.py` -- Defecto
-**Utilidad**: Representa una desviacion observada. Inmutable despues de la creacion.
+**Utilidad**: Registra una anomalia observada. Inmutable tras crearse.
 
 **Especificidades Python**:
-- **`@property`**: expone atributos en solo lectura. `d.tipo` funciona pero `d.tipo = "x"` lanza `AttributeError`
-- **Prefijo `_`** (convencion): atributos privados. Python no los protege realmente, es una convencion
-
-**Metodo `copia()`**:
-Crea una nueva instancia independiente. Usado por `Reporte` para "congelar" los defectos al momento del reporte. Si no se copiara, modificar la lista original modificaria tambien el reporte.
-
-**Metodo `es_critico()`**:
-Retorna `True` si gravedad == 5. Encapsula la regla de negocio (Consigna regla 8).
+- **`@property`**: expone atributos en modo solo lectura (`tipo`, `descripcion`, `gravedad`)
+- **Metodo `copia()`**: clona la instancia para que el `Reporte` congele una copia no vinculada a la lista original
+- **Metodo `es_critico()`**: evalua si gravedad == 5 (Regla 8)
 
 ---
 
 #### `certificacion.py` -- Certificacion
-**Utilidad**: Representa una certificacion de un profesional con fechas de validez.
-
-**Metodo `es_vigente(fecha)`**:
-Verifica `fecha_inicio <= fecha <= fecha_fin` (bornes inclusivos, consigna regla 5).
+**Utilidad**: Acredita la vigencia temporal de una especialidad tecnica.
+**Metodo `es_vigente(fecha)`**: corrobora `fecha_inicio <= fecha <= fecha_fin` (limites inclusivos, Regla 5).
 
 ---
 
 #### `equipo.py` -- Equipo
-**Utilidad**: Representa un instrumento de medicion con su categoria y fecha de calibracion.
-
-**Especificidades Python**:
-- **`uuid.uuid4()`**: genera un identificador unico universal. No es necesario gestionar duplicados
-- **`timedelta` implicito**: `(fecha - self._fecha_calibracion).days` -- la resta de dos `date` retorna un `timedelta`, `.days` extrae el numero de dias
-
-**Metodo `esta_calibrado(fecha)`**:
-`0 <= dias <= 182` -- verifica que la calibracion esta en el pasado (no futura) y dentro de los 182 dias (consigna regla 4).
-
-**Metodo `es_compatible(categoria)`**:
-Simple comparacion de igualdad de strings.
+**Utilidad**: Instrumento de medicion clasificado por categoria y fecha de calibracion.
+- **`esta_calibrado(fecha)`**: `0 <= dias <= 182` (maximo legal de 182 dias, Regla 4).
+- **`es_compatible(categoria)`**: compara igualdad con la categoria exigida por la prueba.
 
 ---
 
 #### `profesional.py` -- Profesional
-**Utilidad**: Representa un inspector con sus certificaciones.
-
-**Especificidades Python**:
-- **`dict` para `_certificaciones`** en lugar de `list`: acceso O(1) por nombre en lugar de O(n) con un bucle
-- **`dict.get(nombre)`**: retorna `None` si la clave no existe (en lugar de lanzar `KeyError`)
-- **`dict(self._certificaciones)`**: retorna una copia superficial del dict (protege el interno)
-
-**Por que dict en lugar de list?**
-La consigna pide usar `dict`. Ademas:
-```python
-# Con list (O(n)) -- codigo anterior:
-for cert in self._certificaciones:
-    if cert.nombre == nombre and cert.es_vigente(fecha):
-        return True
-
-# Con dict (O(1)) -- codigo nuevo:
-cert = self._certificaciones.get(nombre)
-return cert is not None and cert.es_vigente(fecha)
-```
-
-**Por que `dict()` copia en lugar de retornar directamente?**
-Si se retorna `self._certificaciones`, el codigo externo podria modificar el dict interno:
-```python
-prof.certificaciones["FAKE"] = "x"  # Modificaria el interno!
-```
-Con `dict(self._certificaciones)`, es una copia: modificar la copia no cambia el original.
+**Utilidad**: Tecnico evaluador con sus certificaciones.
+- **`dict` para `_certificaciones`**: busqueda instantanea O(1) por nombre de certificacion.
+- **`dict.get(nombre)`**: retorno seguro (`None`) ante claves inexistentes.
+- **`dict(self._certificaciones)`**: expone copia superficial protegiendo la coleccion interna.
 
 ---
 
 #### `muestra.py` -- Muestra
-**Utilidad**: Representa un subconjunto del lote. Gestiona sus propias transiciones de estado.
-
-**Vinculo fuerte con `Lote` (Composicion)**:
-- `Muestra(cantidad, lote_id)` exige obligatoriamente `lote_id` desde la construccion.
-- Una muestra **nunca puede existir sin lote** (Regla 2 de la consigna: *"Cada muestra pertenece a exactamente un lote"*). El atributo `_lote_id` es inmutable y expuesto en solo lectura via `@property lote_id`.
-
-**Especificidades Python**:
-- **`tuple(self._defectos)`**: retorna una version inmutable de la lista. Impide `muestra.defectos.append(x)` desde afuera
-- **`sum(map(lambda d: d.gravedad, self._defectos))`**:
-  - `map()` aplica la lambda a cada defecto, produciendo un iterador de gravedades
-  - `sum()` suma todos los valores
-- **`any(map(lambda d: d.es_critico(), self._defectos))`**:
-  - `any()` retorna `True` en cuanto un elemento es `True` (cortocircuito)
-  - Mas eficiente que un bucle for clasico
-
-**Por que `tuple` en lugar de `list` para `defectos`?**
-La consigna (regla 9) dice: "despues del cierre no se pueden agregar, quitar ni reemplazar defectos". Un tuple es **inmutable**: no tiene `.append()`, `.remove()`, `[i] = x`. Es la garantia estructural de que el codigo llamante no puede modificar la coleccion.
-
-**Por que `sum(map(...))` en lugar de un bucle for?**
-- Mas conciso y declarativo
-- La consigna pide usar `map()`
-- Funcionalmente equivalente, pero mas "pythonico"
-
-**Transiciones de estado**:
-```
-PENDIENTE  -->  EN_INSPECCION  -->  CONFORME
-                                -->  NO_CONFORME
-```
-Cada transicion esta protegida por una verificacion del estado actual. Un estado final (CONFORME/NO_CONFORME) bloquea toda modificacion futura.
-
-**Metodo `asignar_inspeccion()`**:
-Existe para **respetar la encapsulacion**. En lugar de `muestra._inspeccion = self` (acceso directo a un atributo privado), se pasa por un metodo publico que puede validar.
+**Utilidad**: Subconjunto del lote bajo ensayo.
+- **Composicion con `Lote`**: constructor exige `lote_id`. Una muestra no puede existir sin su lote (Regla 2).
+- **`tuple(self._defectos)`**: garantiza que la coleccion de defectos sea inmutable desde el exterior.
+- **`sum(map(lambda d: d.gravedad, self._defectos))`**: sumatoria funcional de gravedades exigida por consigna.
+- **`any(map(lambda d: d.es_critico(), self._defectos))`**: deteccion con cortocircuito de defectos criticos.
+- **`asignar_inspeccion()`**: asignacion formal protegiendo encapsulamiento.
 
 ---
 
 #### `lote.py` -- Lote
-**Utilidad**: Representa un lote de componentes. Contiene muestras y decide la aprobacion/rechazo.
-
-**Metodo `crear_muestra(cantidad)` (Composicion)**:
-Es el `Lote` quien crea directamente sus propias muestras:
-1. Valida la cantidad con `validar_cantidad(cantidad)`
-2. Calcula la capacidad ya utilizada mediante `sum(map(lambda m: m.cantidad, self._muestras.values()))`
-3. Verifica que `capacidad_usada + cantidad <= cantidad_fabricada` (lanza `TransicionIlegalError` si excede)
-4. Instancia `Muestra(cantidad, self._id)` y la registra en su dict `_muestras`
-5. Retorna la instancia de `Muestra`
-
-**Especificidades Python**:
-- **`dict` para `_muestras`**: `{muestra.id: muestra}` -- acceso O(1) por UUID
-- **`sum(map(lambda m: m.cantidad, self._muestras.values()))`**: calcula la capacidad utilizada
-- **`all(map(...))`**: verifica que TODAS las muestras esten en un estado final
-- **`dict.get(tipo, 0)`** en `conteo_por_tipo()`: retorna 0 si la clave no existe
-
-**Por que `dict.get(tipo, 0) + 1` en lugar de `if/else`?**
-```python
-# Codigo anterior (4 lineas):
-if d.tipo in conteo:
-    conteo[d.tipo] += 1
-else:
-    conteo[d.tipo] = 1
-
-# Codigo nuevo (1 linea):
-conteo[d.tipo] = conteo.get(d.tipo, 0) + 1
-```
-`dict.get(clave, valor_por_defecto)` es un idioma Python estandar que reemplaza el patron if/else.
-
-**Decision del lote**:
-- Verifica que el lote este en `EN_PRODUCCION` (no ya decidido)
-- Verifica que tenga al menos una muestra
-- Verifica que todas las muestras esten cerradas
-- Calcula el %: `no_conforme_count / total * 100`
-- `> 5` --> RECHAZADO, `<= 5` --> APROBADO
+**Utilidad**: Partida de produccion que contiene muestras y emite la decision final.
+- **`crear_muestra(cantidad)`**: crea e incorpora sus muestras internamente (Composicion), validando capacidad restante (`sum(map(...))`).
+- **`dict` para `_muestras`**: indexacion O(1) por UUID de muestra.
+- **`all(map(...))`**: control de que el 100% de muestras esten en estado terminal antes de decidir.
+- **`conteo_por_tipo()`**: utiliza `dict.get(tipo, 0) + 1` para contabilizacion idiomática.
 
 ---
 
 #### `reporte.py` -- Reporte
-**Utilidad**: Documento de respaldo para una muestra NO_CONFORME. Contiene una copia fija de los defectos.
-
-**Especificidades Python**:
-- **`tuple(map(lambda d: d.copia(), defectos))`**:
-  - `map()`: aplica `copia()` a cada defecto (crea una nueva instancia)
-  - `tuple()`: hace el resultado inmutable
-  - Doble proteccion: los objetos son copiados Y la coleccion es un tuple
-
-**Por que copiar los defectos?**
-Si se almacenaran las referencias originales, modificar un defecto despues del reporte modificaria tambien el reporte. La copia garantiza que el reporte permanece como una "foto" fiel del momento en que la muestra fue cerrada.
+**Utilidad**: Documento oficial inalterable emitido ante rechazo (`NO_CONFORME`).
+- **`tuple(map(lambda d: d.copia(), defectos))`**: realiza copias profundas de defectos encapsuladas en tupla inmutable.
 
 ---
 
 #### `inspeccion.py` -- Inspeccion
-**Utilidad**: Coordina el proceso de inspeccion. Valida los prerequisitos cruzados ANTES de iniciar.
-
-**Validaciones en el constructor** (orden importante):
-1. Fecha es un objeto `date`
-2. Muestra esta en estado PENDIENTE
-3. Profesional tiene la certificacion requerida (si el procedimiento exige una)
-4. Equipo es de la categoria correcta
-5. Equipo esta calibrado
-
-**Especificidades Python**:
-- **Validacion en `__init__`**: si una validacion falla, la excepcion se lanza y el objeto nunca se crea. La muestra permanece en estado PENDIENTE (consigna regla 5)
-- **`@property cerrada`**: expone el estado cerrado en solo lectura
-
-**Por que validar en el constructor?**
-Es el patron **"fail fast"**. Si los prerequisitos no se cumplen, nunca hay un objeto `Inspeccion` invalido en memoria.
+**Utilidad**: Sesion de ensayo que articula muestra, profesional, equipo y procedimiento.
+- **Constructor Fail-Fast**: valida tipo de fecha, estado PENDIENTE de muestra, certificacion requerida, compatibilidad de equipo y calibracion antes de consolidar el objeto.
 
 ---
 
-### 2.4 Procedimientos y polimorfismo
+### 3.4 Procedimientos y Polimorfismo
 
-#### `procedimiento.py` -- Procedimiento (clase abstracta)
-**Utilidad**: Define la interfaz comun para todos los tipos de procedimientos.
-
-**Especificidades Python**:
-- **`raise NotImplementedError`** en `evaluar()`: fuerza a las subclases a implementar el metodo. Es el equivalente Python de un metodo abstracto
-- **Herencia**: `ProcedimientoDimensional(Procedimiento)` -- hereda de la clase base
+#### `procedimiento.py` -- Clase Base Abstracta
+Define el contrato con `evaluar(observaciones)` que lanza `NotImplementedError` si una subclase no lo implementa.
 
 #### `proc_dimensional.py` -- ProcedimientoDimensional
-**Utilidad**: Evalua observaciones basadas en mediciones fisicas (valor vs tolerancias).
-
-**Metodo `evaluar(observaciones)`**:
-Para cada observacion con `desviacion > 0`, calcula la gravedad basada en el ratio desviacion/tolerancia y crea un `Defecto` de tipo "DIMENSIONAL".
+Mide variaciones cuantitativas respecto a limites (min/max). Calcula gravedades proporcionales al desvio y crea defectos de tipo `"DIMENSIONAL"`.
 
 #### `proc_visual.py` -- ProcedimientoVisual
-**Utilidad**: Evalua observaciones visuales.
-
-**Metodo `evaluar(observaciones)`**:
-Para cada observacion con `defecto_detectado == True`, crea un `Defecto` de tipo "VISUAL" con la gravedad indicada.
-
-#### Polimorfismo en accion
-```python
-# En Inspeccion.ejecutar():
-defectos = self._procedimiento.evaluar(observaciones)
-```
-Sea `self._procedimiento` un `ProcedimientoDimensional` o `ProcedimientoVisual`, es la **misma interfaz** (`evaluar()`). El comportamiento cambia segun el tipo concreto. Es el **polimorfismo por herencia**.
+Registra anomalias cualitativas detectadas por observacion y crea defectos de tipo `"VISUAL"`.
 
 ---
 
-### 2.5 Observaciones
-
-#### `observacion_dimensional.py` -- ObservacionDimensional
-**Especificidades Python**:
-- **Propiedades calculadas** `desviacion` y `tolerancia`: no son atributos almacenados, sino valores calculados en cada acceso. El `@property` hace que `obs.desviacion` parezca un atributo pero ejecuta codigo
-
-#### `observacion_visual.py` -- ObservacionVisual
-**Especificidades Python**:
-- **Parametro opcional** `gravedad=None`: la gravedad solo es requerida si `defecto_detectado` es `True`
+### 3.5 Observaciones
+- `ObservacionDimensional`: propiedades calculadas `@property` para `desviacion` y `tolerancia`.
+- `ObservacionVisual`: parametro optativo `gravedad=None` si no hubo anomalia detectada.
 
 ---
 
-### 2.6 Fachada
-
-#### `empresa.py` -- Empresa
-**Utilidad**: Punto de entrada para crear y registrar todos los objetos. Patron **Fachada (Facade)**.
-
-**Delegacion de creacion para la composicion**:
-- `crear_registrar_muestra(cantidad, lote)`: Empresa delega la creacion al `lote` mediante `lote.crear_muestra(cantidad)`, y luego registra la instancia en `self._registros["muestras"][muestra.id]`. El lote mantiene la propiedad y control directo de la muestra.
-
-**Especificidades Python**:
-- **`dict` de `dict`**: `self._registros = {"lotes": {}, "muestras": {}, ...}` -- un registro central organizado por categoria
-- **`**kwargs`** en `crear_registrar_procedimiento`: permite pasar argumentos nombrados variables
-
-```python
-# La llamada:
-empresa.crear_registrar_procedimiento(
-    ProcedimientoVisual,
-    limite_gravedad_acumulada=5,
-    categoria_equipo_requerida="Visual",
-    certificacion_requerida="ISO"
-)
-
-# Recibe en el metodo:
-def crear_registrar_procedimiento(self, tipo_procedimiento, **kwargs):
-    procedimiento = tipo_procedimiento(**kwargs)  # descomprime los kwargs
-```
-
-**Por que `**kwargs`?**
-Cada tipo de procedimiento puede tener parametros diferentes. `**kwargs` permite pasar cualquier argumento sin modificar la firma del metodo. Es la **flexibilidad** requerida por el polimorfismo.
+### 3.6 Fachada (`empresa.py`)
+- Punto unico de gestion (`Fachada`).
+- `crear_registrar_muestra(cantidad, lote)`: delega al lote la creacion (`lote.crear_muestra(cantidad)`) y la registra en su inventario.
+- `**kwargs` en `crear_registrar_procedimiento`: provee total flexibilidad para admitir parametros heterogeneos segun el procedimiento.
 
 ---
 
-### 2.7 Ejecucion
-
-#### `main.py`
-**Utilidad**: Demuestra el flujo completo en 10 etapas secuenciales:
-
-1. Crear un lote + 20 muestras via `empresa.crear_registrar_muestra(50, lote)` (composicion)
-2. Crear profesionales con certificaciones
-3. Crear equipos calibrados
-4. Crear procedimientos (visual + dimensional) via `**kwargs`
-5. Demostrar validaciones que rechazan (certificacion ausente, calibracion vencida, categoria incompatible)
-6. Ejecutar inspecciones visuales
-7. Ejecutar una inspeccion dimensional
-8. Consultar estadisticas del lote (sin efectos secundarios)
-9. Decidir el lote
-10. Mostrar resumen con reportes
+### 3.7 Ejecucion (`main.py`)
+Simulacion E2E que recorre en 10 pasos la creacion, las validaciones que fallan preventivamente, las inspecciones conformes y no conformes, los reportes emitidos y la aprobacion del lote segun Six Sigma.
 
 ---
 
-## 3. Relaciones entre las clases
+## 4. Relaciones entre las clases (Analisis UML)
 
-### 3.1 Tipos de relaciones UML
+### 4.1 Tipos de relaciones UML
 
 #### Composicion (rombo negro `*--`): "forma parte de" -- ciclo de vida ligado
-**Si el contenedor se destruye, los contenidos se destruyen tambien.**
-
 | Relacion | Explicacion | En el codigo |
 |---|---|---|
 | `Lote *-- Muestra` | Una muestra pertenece obligatoriamente a exactamente un lote desde su creacion (Regla 2). El lote crea y controla sus muestras | `lote.crear_muestra(cantidad)` instancia `Muestra(cantidad, self._id)` internamente |
@@ -373,40 +312,30 @@ Cada tipo de procedimiento puede tener parametros diferentes. `**kwargs` permite
 | `Reporte *-- Defecto` | El reporte contiene copias fijas de los defectos | `self._defectos = tuple(map(...))` -- copias creadas en la construccion |
 
 #### Agregacion (rombo blanco `o--`): "contiene" -- ciclo de vida independiente
-**Los contenidos pueden existir sin el contenedor.**
-
-En esta arquitectura, la relacion `Lote` / `Muestra` es una **composicion estricta** (`*--`) y no una agregacion: una `Muestra` nunca puede existir sin su `Lote` (ciclo de vida ligado, `lote_id` obligatorio desde la instanciacion, respetando la Regla 2 del dominio).
+En este diseño la relacion `Lote` / `Muestra` es de **composicion estricta** (`*--`): no se concibe una `Muestra` huerfana sin su lote (el `lote_id` es obligatorio e inmutable desde el constructor).
 
 #### Asociacion (flecha `-->`): "usa / referencia"
-**Simple referencia, sin ciclo de vida ligado.**
-
 | Relacion | Explicacion | En el codigo |
 |---|---|---|
-| `Inspeccion --> Muestra` | La inspeccion referencia una muestra pero no la "posee" | `self._muestra = muestra` |
+| `Inspeccion --> Muestra` | La inspeccion referencia una muestra pero no la posee | `self._muestra = muestra` |
 | `Inspeccion --> Profesional` | Idem | `self._profesional = profesional` |
 | `Inspeccion --> Equipo` | Idem | `self._equipo = equipo` |
 | `Inspeccion --> Procedimiento` | Idem | `self._procedimiento = procedimiento` |
-| `Muestra --> Reporte` | La muestra referencia su reporte | `self._reporte = Reporte(...)` |
+| `Muestra --> Reporte` | La muestra referencia su reporte oficial | `self._reporte = Reporte(...)` |
 
 #### Dependencia (flecha punteada `..>`): "usa temporalmente"
-**Sin referencia almacenada, solo uso en un metodo.**
-
-| Relacion | Explicacion |
-|---|---|
-| `Empresa ..> Lote/Muestra/...` | Empresa crea estos objetos pero no los "posee" en el sentido OO -- viven en un dict |
-| `ProcedimientoDimensional ..> ObservacionDimensional` | El procedimiento recibe las observaciones como parametro de `evaluar()` |
-| `Muestra ..> EstadoMuestra` | Muestra usa el enum para su estado |
+- `Empresa ..> Lote/Muestra/...`: orquesta la creacion y los almacena en su registro.
+- `ProcedimientoDimensional ..> ObservacionDimensional`: procesa observaciones recibidas como argumento.
+- `Muestra ..> EstadoMuestra`: tipado de estados.
+- `Lote ..> EstadoLote`: tipado de estados.
 
 #### Herencia (flecha triangulo `<|--`)
-
-| Relacion | En el codigo |
-|---|---|
-| `Procedimiento <\|-- ProcedimientoDimensional` | `class ProcedimientoDimensional(Procedimiento):` |
-| `Procedimiento <\|-- ProcedimientoVisual` | `class ProcedimientoVisual(Procedimiento):` |
+- `Procedimiento <|-- ProcedimientoDimensional`
+- `Procedimiento <|-- ProcedimientoVisual`
 
 ---
 
-## 4. Recapitulativo de especificidades Python
+## 5. Recapitulativo de especificidades Python
 
 | Concepto Python | Donde | Por que |
 |---|---|---|
@@ -427,31 +356,6 @@ En esta arquitectura, la relacion `Lote` / `Muestra` es una **composicion estric
 | **`date`/`timedelta`** | Equipo, Certificacion, Inspeccion | Calculos de fechas (consigna regla 88) |
 | **Herencia** | Procedimiento --> Dimensional/Visual | Polimorfismo |
 | **Excepciones custom** | excepciones.py | Errores de negocio (consigna regla 86) |
-
----
-
-## 5. Flujo global de ejecucion
-
-```
-1. Empresa crea Lote(nombre, cantidad)
-2. Empresa crea las muestras a traves del lote: empresa.crear_registrar_muestra(cantidad, lote)
-   --> Lote.crear_muestra(cantidad) verifica capacidad y crea Muestra(cantidad, lote.id) (composicion)
-3. Empresa crea Profesional(nombre)
-5. Profesional.agregar_certificacion(Certificacion(nombre, inicio, fin))
-6. Empresa crea Equipo(categoria, fecha_calibracion)
-7. Empresa crea Procedimiento (Dimensional o Visual via **kwargs)
-8. Empresa.lanzar_inspeccion(muestra, prof, equipo, proc, fecha)
-   --> Inspeccion.__init__ valida todo, pasa muestra a EN_INSPECCION
-9. Inspeccion.ejecutar(observaciones)
-   --> Procedimiento.evaluar(obs) -- polimorfismo
-   --> Muestra.agregar_defecto(defecto) por cada defecto encontrado
-10. Inspeccion.cerrar()
-    --> Muestra.cerrar(limite) -- determina CONFORME o NO_CONFORME
-    --> Si NO_CONFORME: Reporte creado con copia de los defectos
-11. Lote.decidir()
-    --> Calcula porcentaje_no_conforme()
-    --> APROBADO (<= 5%) o RECHAZADO (> 5%)
-```
 
 ---
 
