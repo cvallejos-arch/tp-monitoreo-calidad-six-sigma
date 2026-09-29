@@ -11,7 +11,6 @@ class Procedimiento:
             limite_gravedad_acumulada, "limite_gravedad_acumulada"
         )
         if self._limite_gravedad_acumulada <= 0:
-            
             raise DatosInvalidosError(
                 f"El límite de gravedad acumulada debe ser positivo, "
                 f"recibido: {limite_gravedad_acumulada}"
