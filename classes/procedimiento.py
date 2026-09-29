@@ -1,6 +1,6 @@
 import uuid
 from classes.validacion import validar_texto, validar_entero
-
+from classes.excepciones import DatosInvalidosError
 
 class Procedimiento:
 
@@ -11,7 +11,7 @@ class Procedimiento:
             limite_gravedad_acumulada, "limite_gravedad_acumulada"
         )
         if self._limite_gravedad_acumulada <= 0:
-            from classes.excepciones import DatosInvalidosError
+            
             raise DatosInvalidosError(
                 f"El límite de gravedad acumulada debe ser positivo, "
                 f"recibido: {limite_gravedad_acumulada}"
