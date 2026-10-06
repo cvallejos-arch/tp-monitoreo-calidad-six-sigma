@@ -64,3 +64,48 @@ class TestCertificaciones:
         certs = prof.certificaciones
         certs["FAKE"] = "x"
         assert "FAKE" not in prof.certificaciones
+
+
+
+class TestCertificacionesVigentes:
+    def test_sin_certificaciones_retorna_tupla_vacia(self):
+        prof = Profesional("Ana")
+        assert prof.certificaciones_vigentes(date(2025, 6, 15)) == ()
+
+    def test_filtra_solo_las_vigentes(self):
+        prof = Profesional("Ana")
+        vigente = Certificacion("ISO", date(2025, 1, 1), date(2025, 12, 31))
+        vencida = Certificacion("Seguridad", date(2023, 1, 1), date(2023, 12, 31))
+        prof.agregar_certificacion(vigente)
+        prof.agregar_certificacion(vencida)
+
+        resultado = prof.certificaciones_vigentes(date(2025, 6, 15))
+
+        assert resultado == (vigente,)
+
+    def test_ninguna_vigente_en_la_fecha(self):
+        prof = Profesional("Ana")
+        prof.agregar_certificacion(
+            Certificacion("ISO", date(2023, 1, 1), date(2023, 12, 31))
+        )
+        assert prof.certificaciones_vigentes(date(2025, 6, 15)) == ()
+
+    def test_retorna_tupla(self):
+        """Devuelve una tupla para que no se pueda modificar desde afuera."""
+        prof = Profesional("Ana")
+        assert isinstance(prof.certificaciones_vigentes(date(2025, 6, 15)), tuple)
+
+
+class TestReprProfesional:
+    def test_repr_incluye_nombre_y_certificaciones(self):
+        prof = Profesional("Ana")
+        prof.agregar_certificacion(
+            Certificacion("ISO", date(2025, 1, 1), date(2025, 12, 31))
+        )
+        texto = repr(prof)
+        assert "Ana" in texto
+        assert "ISO" in texto
+
+    def test_repr_sin_certificaciones(self):
+        prof = Profesional("Ana")
+        assert "Ana" in repr(prof)
