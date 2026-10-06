@@ -3,10 +3,6 @@ from classes.validacion import validar_texto, validar_rango_fechas
 
 class Certificacion:
     def __init__(self, nombre, fecha_inicio, fecha_fin):
-        # falta agregar atributo de clase que contenga 
-        # todos los nombres de las certificaciones para 
-        # validar que cada una sea unica antes de crearla. 
-        # esto es porque son claves de un diccionario en Profesional
         self._nombre = validar_texto(nombre, "nombre_certificacion")
         validar_rango_fechas(fecha_inicio, fecha_fin)
         self._fecha_inicio = fecha_inicio

@@ -2,6 +2,7 @@ from classes.estado_muestra import EstadoMuestra
 from classes.validacion import validar_cantidad
 from classes.excepciones import TransicionIlegalError
 from classes.reporte import Reporte
+from classes.pila import Pila
 import uuid
 
 
@@ -10,7 +11,8 @@ class Muestra:
         self._id = uuid.uuid4()
         self._cantidad = validar_cantidad(cantidad)
         self._lote_id = lote_id
-        self._estado = EstadoMuestra.PENDIENTE
+        self._historial = Pila(EstadoMuestra)
+        self._historial.apilar(EstadoMuestra.PENDIENTE)
         self._defectos = []
         self._inspeccion = None
         self._reporte = None
@@ -25,7 +27,12 @@ class Muestra:
 
     @property
     def estado(self):
-        return self._estado
+        return self._historial.tope()
+
+    @property
+    def historial_estados(self):                    # NUEVO
+        """Tupla inmutable, del estado más antiguo al más nuevo."""
+        return self._historial.historial()
 
     @property
     def defectos(self):
@@ -44,6 +51,10 @@ class Muestra:
     def reporte(self):
         return self._reporte
 
+    def _cambiar_estado(self, nuevo):               # NUEVO
+        self._historial.apilar(nuevo)
+
+
     def asignar_inspeccion(self, inspeccion):
         """Asigna la inspección a la muestra (encapsulación correcta)."""
         if self._inspeccion is not None:
@@ -61,8 +72,8 @@ class Muestra:
                 f"No se pudo iniciar la inspección: la muestra '{self._id}' "
                 f"está en estado {self._estado.value}, se espera PENDIENTE."
             )
-        self._estado = EstadoMuestra.EN_INSPECCION
-
+        self._cambiar_estado(EstadoMuestra.EN_INSPECCION)
+    
     def agregar_defecto(self, defecto):
         """Agrega un defecto a la muestra. Solo se puede en estado EN_INSPECCION."""
         if self._estado != EstadoMuestra.EN_INSPECCION:
@@ -83,9 +94,9 @@ class Muestra:
             )
 
         if self.tiene_critico() or self.suma_gravedades() > limite_gravedad:
-            self._estado = EstadoMuestra.NO_CONFORME
+            self._cambiar_estado(EstadoMuestra.NO_CONFORME)
         else:
-            self._estado = EstadoMuestra.CONFORME
+            self._cambiar_estado(EstadoMuestra.CONFORME)
 
         # Generar reporte si es no conforme
         if self._estado == EstadoMuestra.NO_CONFORME:
@@ -94,7 +105,8 @@ class Muestra:
                 lote_id=self._lote_id,
                 profesional_id=self._inspeccion.profesional_id,
                 fecha=self._inspeccion.fecha,
-                defectos=self._defectos
+                defectos=self._defectos,
+                historial_estados=self.historial_estados,
             )
 
     # --- Cálculos con sum(), any(), map() ---

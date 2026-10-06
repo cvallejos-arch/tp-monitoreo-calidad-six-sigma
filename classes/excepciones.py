@@ -40,3 +40,8 @@ class InspeccionInvalidaError(CalidadError):
     """Para operaciones inválidas sobre una inspección cerrada."""
     def __init__(self, mensaje="La inspección no puede ser ejecutada o cerrada", **detalles):
         super().__init__(mensaje, **detalles)
+
+class EstructuraVaciaError(CalidadError):
+    """Para desapilar/desencolar/consultar una estructura vacía."""
+    def __init__(self, mensaje="La estructura está vacía", **detalles):
+        super().__init__(mensaje, **detalles)

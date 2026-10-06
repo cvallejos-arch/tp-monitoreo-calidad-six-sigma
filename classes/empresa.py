@@ -4,7 +4,7 @@ from classes.inspeccion import Inspeccion
 from classes.profesional import Profesional
 from classes.equipo import Equipo
 from classes.muestra import Muestra
-
+from classes.excepciones import EstructuraVaciaError
 
 class Empresa:
 
@@ -60,6 +60,15 @@ class Empresa:
         )
         self._registros["inspecciones"][inspeccion.id] = inspeccion
         return inspeccion
+    
+    def lanzar_siguiente_inspeccion(self, lote, profesional, equipo, procedimiento, fecha):
+        """Lanza la inspección de la próxima muestra pendiente del lote."""
+        muestra = lote.siguiente_muestra_pendiente()
+        if muestra is None:
+            raise EstructuraVaciaError(
+                f"El lote '{lote.id}' no tiene muestras pendientes.", lote_id=lote.id
+            )
+        return self.lanzar_inspeccion(muestra, profesional, equipo, procedimiento, fecha)
 
     # --- Consultas del registro (dict) ---
 
