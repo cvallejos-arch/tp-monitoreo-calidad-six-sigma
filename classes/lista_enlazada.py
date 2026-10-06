@@ -31,7 +31,7 @@ class ListaEnlazada:
                 f"recibido: '{type(dato).__name__}'"
             )
 
-    # --- Inserción ---
+    # Insertar
 
     def insertar_inicio(self, dato):
         self._validar_tipo(dato)
@@ -52,7 +52,7 @@ class ListaEnlazada:
         self._fin = nuevo
         self._tamanio += 1
 
-    # --- Consulta ---
+    # Consultas
 
     def primero(self):
         """Retorna el dato del primer nodo sin eliminarlo."""
@@ -75,7 +75,7 @@ class ListaEnlazada:
             actual = actual.get_siguiente()
         return None
 
-    # --- Eliminación ---
+    # Eliminar
 
     def eliminar_inicio(self):
         """Elimina el primer nodo y retorna su dato."""
@@ -112,7 +112,7 @@ class ListaEnlazada:
 
         return False
 
-    # --- Protocolos de Python (permiten usar len, for, map, filter, sum) ---
+    # Protocolos de Python 
 
     def __len__(self):
         return self._tamanio
