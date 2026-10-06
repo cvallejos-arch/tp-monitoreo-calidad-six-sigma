@@ -8,6 +8,9 @@ import uuid
 
 
 class Lote:
+    # Estados en los que una muestra se considera cerrada (inspección finalizada).
+    ESTADOS_FINALES = (EstadoMuestra.CONFORME, EstadoMuestra.NO_CONFORME)
+
     def __init__(self, nombre_componentes, cantidad_fabricada):
         self._id = uuid.uuid4()
         self._nombre_componentes = validar_texto(
@@ -66,13 +69,8 @@ class Lote:
 
     def _muestras_cerradas(self):
         """Filtra las muestras que se encuentran en un estado final."""
-        estados_finales = (
-            EstadoMuestra.CONFORME,
-            EstadoMuestra.NO_CONFORME
-        )
-
         return filter(
-            lambda m: m.estado in estados_finales,
+            lambda m: m.estado in Lote.ESTADOS_FINALES,
             self._muestras.values()
         )
 
@@ -117,23 +115,16 @@ class Lote:
             self._muestras.values()
         )
 
-        # Transformamos cada muestra filtrada en 1 para poder contarlas.
-        cantidad_no_conformes = sum(
-            map(lambda m: 1, no_conformes)
-        )
+        # Contamos las muestras filtradas.
+        cantidad_no_conformes = len(list(no_conformes))
 
         return cantidad_no_conformes / total_muestras * 100
 
     def todas_cerradas(self):
         """Verifica si todas las muestras están en un estado final."""
-        estados_finales = (
-            EstadoMuestra.CONFORME,
-            EstadoMuestra.NO_CONFORME
-        )
-
         return all(
             map(
-                lambda m: m.estado in estados_finales,
+                lambda m: m.estado in Lote.ESTADOS_FINALES,
                 self._muestras.values()
             )
         )
@@ -142,16 +133,12 @@ class Lote:
         """Cuenta el total de defectos críticos de las muestras cerradas."""
 
         # Primero se filtran las muestras cerradas.
-        # Luego cada muestra se transforma en su cantidad de defectos críticos.
+        # Luego cada muestra se transforma en su cantidad de defectos críticos
+        # (filtrando sus defectos con gravedad 5).
         # Finalmente se suman esas cantidades.
         return sum(
             map(
-                lambda m: sum(
-                    map(
-                        lambda d: 1 if d.es_critico() else 0,
-                        m.defectos
-                    )
-                ),
+                lambda m: len(list(filter(lambda d: d.es_critico(), m.defectos))),
                 self._muestras_cerradas()
             )
         )
