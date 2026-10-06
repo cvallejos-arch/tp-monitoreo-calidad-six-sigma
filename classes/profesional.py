@@ -1,4 +1,5 @@
 import uuid
+
 from classes.excepciones import DatosInvalidosError
 from classes.certificacion import Certificacion
 from classes.validacion import validar_texto
@@ -20,27 +21,46 @@ class Profesional:
 
     @property
     def certificaciones(self):
-        """Retorna una copia del dict de certificaciones."""
+        """Retorna una copia del diccionario de certificaciones."""
         return dict(self._certificaciones)
 
     def agregar_certificacion(self, cert):
-        """Agrega una certificación al profesional. Usa dict para acceso por nombre."""
+        """Agrega una certificación al profesional."""
         if not isinstance(cert, Certificacion):
             raise DatosInvalidosError(
-                f"El objeto '{cert}' no es una instancia de la clase 'Certificacion'."
+                f"El objeto '{cert}' no es una instancia de la clase "
+                f"'Certificacion'."
             )
+
         self._certificaciones[cert.nombre] = cert
 
     def tiene_certificacion_vigente(self, nombre, fecha):
-        """Verifica si el profesional tiene una certificación vigente con el nombre dado
-        en la fecha indicada. Usa dict.get() para acceso eficiente."""
+        """Verifica si el profesional tiene una certificación vigente
+        con el nombre indicado en la fecha dada."""
         cert = self._certificaciones.get(nombre)
+
         if cert is None:
             return False
+
         return cert.es_vigente(fecha)
 
+    def certificaciones_vigentes(self, fecha):
+        """Retorna las certificaciones vigentes en la fecha indicada."""
+        return tuple(
+            filter(
+                lambda cert: cert.es_vigente(fecha),
+                self._certificaciones.values()
+            )
+        )
+
     def __repr__(self):
+        certificaciones = ", ".join(
+            f"{nombre}: {cert}"
+            for nombre, cert in self._certificaciones.items()
+        )
+
         return (
-            f"Profesional(id={self._id}, nombre='{self._nombre}', "
-            f"certificaciones={list(self._certificaciones.keys())})"
+            f"Profesional(id={self._id}, "
+            f"nombre='{self._nombre}', "
+            f"certificaciones={{ {certificaciones} }})"
         )
