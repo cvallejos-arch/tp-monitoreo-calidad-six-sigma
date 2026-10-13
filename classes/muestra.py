@@ -11,8 +11,8 @@ class Muestra:
         self._id = uuid.uuid4()
         self._cantidad = validar_cantidad(cantidad)
         self._lote_id = lote_id
-        self._historial = Pila(EstadoMuestra)
-        self._historial.apilar(EstadoMuestra.PENDIENTE)
+        self._historial = Pila(EstadoMuestra)  # pila LIFO con el historial de estados
+        self._historial.push(EstadoMuestra.PENDIENTE)  # push: agrega el estado inicial en el top
         self._defectos = []
         self._inspeccion = None
         self._reporte = None
@@ -27,12 +27,12 @@ class Muestra:
 
     @property
     def estado(self):
-        return self._historial.tope()
+        return self._historial.peek()  # peek: consulta el top (estado actual) sin quitarlo
 
     @property
     def historial_estados(self):
         """Tupla inmutable, del estado más antiguo al más nuevo."""
-        return self._historial.historial()
+        return self._historial.historial()  # historial: estados del bottom (más antiguo) al top
 
     @property
     def defectos(self):
@@ -53,7 +53,7 @@ class Muestra:
 
     def _cambiar_estado(self, nuevo):
         """Registra el nuevo estado en el historial (pila): el tope es el estado actual."""
-        self._historial.apilar(nuevo)
+        self._historial.push(nuevo)  # push: el nuevo estado pasa a ser el top
 
     def asignar_inspeccion(self, inspeccion):
         """Asigna la inspección a la muestra (encapsulación correcta)."""

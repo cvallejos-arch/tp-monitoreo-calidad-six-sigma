@@ -41,7 +41,14 @@ class InspeccionInvalidaError(CalidadError):
     def __init__(self, mensaje="La inspección no puede ser ejecutada o cerrada", **detalles):
         super().__init__(mensaje, **detalles)
 
+
 class EstructuraVaciaError(CalidadError):
-    """Para desapilar/desencolar/consultar una estructura vacía."""
+    """Para pop/peek de una pila o get/front de una cola vacía."""
     def __init__(self, mensaje="La estructura está vacía", **detalles):
+        super().__init__(mensaje, **detalles)
+
+
+class EstructuraLlenaError(CalidadError):
+    """Para put en una cola que alcanzó su capacidad máxima (maxsize)."""
+    def __init__(self, mensaje="La estructura está llena", **detalles):
         super().__init__(mensaje, **detalles)

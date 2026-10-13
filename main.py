@@ -55,7 +55,7 @@ def main():
 
     # El lote encola cada muestra al crearla (Cola: primero en entrar, primero en salir)
     print(f"Muestras pendientes en la cola: {len(lote.pendientes_en_orden())}")
-    print(f"Siguiente a inspeccionar (frente de la cola): {lote.siguiente_muestra_pendiente().id}")
+    print(f"Siguiente a inspeccionar (front de la cola): {lote.siguiente_muestra_pendiente().id}")  # front: primera en entrar
 
     # ============================================================
     #  2. REGISTRAR PROFESIONALES CON CERTIFICACIONES
@@ -162,7 +162,7 @@ def main():
     separador("6. EJECUTAR INSPECCIONES VISUALES")
 
     # Muestra 0: no conforme (defecto crítico). Se toma del frente de la cola.
-    insp_0 = empresa.lanzar_siguiente_inspeccion(
+    insp_0 = empresa.lanzar_siguiente_inspeccion(  # toma la muestra del front de la cola (FIFO)
         lote, prof_ana, equipo_visual, proc_visual, fecha_hoy
     )
     obs_visual_0 = [
@@ -175,12 +175,12 @@ def main():
         print(f"  - {d}")
     insp_0.cerrar()
     print(f"Estado muestra 0: {muestras[0].estado.value}")
-    print(f"Historial de estados (pila): {texto_historial(muestras[0].historial_estados)}")
+    print(f"Historial de estados (pila): {texto_historial(muestras[0].historial_estados)}")  # del bottom al top
     print(f"Reporte: {muestras[0].reporte}")
 
     # Muestras 1 a 18: conformes. La cola entrega las pendientes en orden de creación.
     for i in range(1, 19):
-        insp = empresa.lanzar_siguiente_inspeccion(
+        insp = empresa.lanzar_siguiente_inspeccion(  # toma la muestra del front de la cola (FIFO)
             lote, prof_ana, equipo_visual, proc_visual, fecha_hoy
         )
         insp.ejecutar([ObservacionVisual("Sin defectos observados", False)])
@@ -195,7 +195,7 @@ def main():
     separador("7. EJECUTAR INSPECCIÓN DIMENSIONAL")
 
     # Muestra 19: la última que queda en la cola de pendientes
-    insp_19 = empresa.lanzar_siguiente_inspeccion(
+    insp_19 = empresa.lanzar_siguiente_inspeccion(  # toma la muestra del front de la cola (FIFO)
         lote, prof_ana, equipo_dimensional, proc_dimensional, fecha_hoy
     )
     obs_dim = [

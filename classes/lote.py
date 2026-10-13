@@ -20,7 +20,7 @@ class Lote:
         self._cantidad_fabricada = validar_cantidad(cantidad_fabricada)
         self._estado = EstadoLote.EN_PRODUCCION
         self._muestras = {}  # dict {muestra.id: muestra}
-        self._pendientes = Cola(Muestra)
+        self._pendientes = Cola(Muestra)  # cola FIFO de muestras pendientes de inspección
 
     @property
     def id(self):
@@ -66,22 +66,22 @@ class Lote:
 
         muestra = Muestra(cantidad, self._id)
         self._muestras[muestra.id] = muestra
-        self._pendientes.encolar(muestra)
+        self._pendientes.put(muestra)  # put: agrega la muestra al final de la cola (rear)
         return muestra
 
     # --- Cola de pendientes ---
 
     def siguiente_muestra_pendiente(self):
         """Retorna la próxima muestra PENDIENTE en orden de creación, o None.
-        NO la desencola: sigue al frente hasta que deje de estar PENDIENTE.
-        Descarta del frente las muestras que ya no están pendientes (p. ej.
+        NO la quita de la cola: sigue en el front hasta que deje de estar PENDIENTE.
+        Descarta del front las muestras que ya no están pendientes (p. ej.
         inspeccionadas fuera de orden). No modifica muestras, reportes ni
         el estado del lote."""
-        while not self._pendientes.esta_vacia():
-            frente = self._pendientes.frente()
-            if frente.estado == EstadoMuestra.PENDIENTE:
-                return frente
-            self._pendientes.desencolar()
+        while not self._pendientes.empty():  # empty: True si la cola no tiene elementos
+            primera = self._pendientes.front()  # front: consulta el primer elemento sin quitarlo
+            if primera.estado == EstadoMuestra.PENDIENTE:
+                return primera
+            self._pendientes.get()  # get: quita el primer elemento de la cola (front)
         return None
 
     def pendientes_en_orden(self):
