@@ -304,6 +304,25 @@ def main():
     ))
     print(f"Los reportes cargados coinciden con los originales: {iguales}")
 
+    # ============================================================
+    #  12. SERIALIZACIÓN PICKLE DE TODA LA EMPRESA
+    # ============================================================
+    separador("12. SERIALIZACIÓN PICKLE DE TODA LA EMPRESA")
+
+    ruta_pkl = "empresa.pkl"
+    empresa.guardar(ruta_pkl)  # pickle.dump con "wb"
+    print(f"Empresa completa guardada en '{ruta_pkl}' (archivo binario)")
+
+    empresa_cargada = Empresa.cargar(ruta_pkl)  # pickle.load con "rb"
+    print(f"Empresa cargada. ¿Es otro objeto? {empresa_cargada is not empresa}")
+    print(f"¿Mismo contenido? {empresa_cargada.resumen() == empresa.resumen()}")
+
+    lote_cargado = empresa_cargada.obtener_lote(lote.id)
+    print(f"Lote recuperado: estado {lote_cargado.estado.value}, "
+          f"{len(lote_cargado.muestras)} muestras")
+    muestra_0 = empresa_cargada.obtener_muestra(muestras[0].id)
+    print(f"Historial de la muestra 0 recuperado: {texto_historial(muestra_0.historial_estados)}")
+
     print(f"\n{'='*60}")
     print("  [OK] EJECUCION COMPLETA - TODAS LAS FUNCIONALIDADES DEMOSTRADAS")
     print(f"{'='*60}")

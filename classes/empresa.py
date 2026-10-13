@@ -1,4 +1,5 @@
 import json
+import pickle
 
 from classes.lote import Lote
 from classes.muestra import Muestra
@@ -180,3 +181,34 @@ class Empresa:
                 f"El archivo '{ruta}' tiene reportes con datos incompletos o inválidos.",
                 ruta=str(ruta)
             ) from e
+
+    # --- Serialización pickle de toda la empresa ---
+
+    def guardar(self, ruta):
+        """Guarda la empresa completa en un archivo binario (serialización con pickle):
+        lotes, muestras (con su pila de estados), colas de pendientes, profesionales,
+        equipos, procedimientos, inspecciones y reportes, con sus relaciones."""
+        with open(ruta, "wb") as f:
+            pickle.dump(self, f)
+
+    @classmethod
+    def cargar(cls, ruta):
+        """Reconstruye una empresa guardada con guardar() (deserialización).
+        Lanza DatosInvalidosError si el archivo no es un pickle válido o si no
+        contiene una Empresa. Solo cargar archivos propios: pickle puede ejecutar
+        código al leer un archivo de origen desconocido."""
+        with open(ruta, "rb") as f:
+            try:
+                empresa = pickle.load(f)
+            except (pickle.UnpicklingError, EOFError) as e:
+                raise DatosInvalidosError(
+                    f"El archivo '{ruta}' no es un pickle válido.", ruta=str(ruta)
+                ) from e
+
+        if not isinstance(empresa, cls):
+            raise DatosInvalidosError(
+                f"El archivo '{ruta}' no contiene una {cls.__name__}, "
+                f"sino un '{type(empresa).__name__}'.",
+                ruta=str(ruta)
+            )
+        return empresa
