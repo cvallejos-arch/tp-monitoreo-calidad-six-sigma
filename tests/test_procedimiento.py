@@ -41,13 +41,23 @@ class TestCreacionProcedimiento:
                 categoria_equipo_requerida="Visual"
             )
 
-    def test_base_no_implementa_evaluar(self):
-        proc = Procedimiento(
-            limite_gravedad_acumulada=5,
-            categoria_equipo_requerida="Visual"
-        )
-        with pytest.raises(NotImplementedError):
-            proc.evaluar([])
+    def test_base_es_abstracta(self):
+        """Procedimiento es abstracta (ABC): no se puede instanciar sin evaluar()."""
+        with pytest.raises(TypeError):
+            Procedimiento(
+                limite_gravedad_acumulada=5,
+                categoria_equipo_requerida="Visual"
+            )
+
+    def test_subclase_sin_evaluar_no_se_puede_instanciar(self):
+        class ProcedimientoIncompleto(Procedimiento):
+            pass
+
+        with pytest.raises(TypeError):
+            ProcedimientoIncompleto(
+                limite_gravedad_acumulada=5,
+                categoria_equipo_requerida="Visual"
+            )
 
 
 class TestProcedimientoVisual:

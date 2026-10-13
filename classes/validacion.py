@@ -47,6 +47,26 @@ def validar_texto(texto, nombre_campo="texto"):
     return texto
 
 
+# Caracteres extra (además de letras y números) permitidos en nombres técnicos.
+SEPARADORES_PERMITIDOS = " -./"
+
+
+def validar_nombre_tecnico(texto, nombre_campo="texto"):
+    """Valida un nombre técnico no vacío: letras, números, espacios y los
+    separadores '-', '.', '/'. Ej: 'ISO 9001', 'Tornillos M8', 'Calibre 0.01'.
+    Retorna el valor validado."""
+    if not isinstance(texto, str) or texto.strip() == "":
+        raise DatosInvalidosError(
+            f"El campo '{nombre_campo}' no puede estar vacío"
+        )
+    if not all(map(lambda c: c.isalnum() or c in SEPARADORES_PERMITIDOS, texto)):
+        raise DatosInvalidosError(
+            f"El campo '{nombre_campo}' solo puede contener letras, números, espacios "
+            f"y '{SEPARADORES_PERMITIDOS.strip()}', recibido: '{texto}'"
+        )
+    return texto
+
+
 def validar_descripcion(descripcion):
     """Valida que la descripción sea un string no vacío.
     Permite cualquier carácter. Retorna el valor validado."""

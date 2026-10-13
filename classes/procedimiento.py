@@ -1,8 +1,19 @@
 import uuid
-from classes.validacion import validar_texto, validar_entero
-from classes.excepciones import DatosInvalidosError
+from abc import ABC, abstractmethod
 
-class Procedimiento:
+from classes.validacion import validar_entero, validar_nombre_tecnico
+from classes.excepciones import DatosInvalidosError
+from classes.defecto import Defecto
+
+
+class Procedimiento(ABC):
+    """Clase abstracta: define el contrato de toda inspección (límite de gravedad,
+    requisitos de equipo y certificación) y exige implementar evaluar().
+    No se puede instanciar directamente: solo sus subclases concretas."""
+
+    # Clase de defecto que produce cada procedimiento. Cada subclase la redefine
+    # para que la inspección pueda verificar la coherencia de los defectos.
+    CLASE_DEFECTO = Defecto
 
     def __init__(self, limite_gravedad_acumulada, categoria_equipo_requerida,
                  certificacion_requerida=None, **kwargs):
@@ -15,11 +26,11 @@ class Procedimiento:
                 f"El límite de gravedad acumulada debe ser positivo, "
                 f"recibido: {limite_gravedad_acumulada}"
             )
-        self._categoria_equipo_requerida = validar_texto(
+        self._categoria_equipo_requerida = validar_nombre_tecnico(
             categoria_equipo_requerida, "categoria_equipo_requerida"
         )
         if certificacion_requerida is not None:
-            validar_texto(certificacion_requerida, "certificacion_requerida")
+            validar_nombre_tecnico(certificacion_requerida, "certificacion_requerida")
         self._certificacion_requerida = certificacion_requerida
 
     @property
@@ -38,14 +49,14 @@ class Procedimiento:
     def certificacion_requerida(self):
         return self._certificacion_requerida
 
+    @abstractmethod
     def evaluar(self, observaciones):
-        """Evalúa observaciones y retorna una lista de defectos.
-        Debe ser implementado por las subclases (polimorfismo)."""
-        raise NotImplementedError("Se implementa en las subclases")
+        """Evalúa observaciones y retorna una lista de defectos de CLASE_DEFECTO.
+        Cada subclase la implementa con su propio criterio (polimorfismo)."""
 
     def __repr__(self):
         return (
-            f"Procedimiento(id={self._id}, "
+            f"{type(self).__name__}(id={self._id}, "
             f"limite_gravedad_acumulada={self._limite_gravedad_acumulada}, "
             f"categoria_equipo_requerida='{self._categoria_equipo_requerida}', "
             f"certificacion_requerida={self._certificacion_requerida})"

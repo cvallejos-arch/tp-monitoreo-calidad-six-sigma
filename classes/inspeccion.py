@@ -117,6 +117,18 @@ class Inspeccion:
             )
 
         defectos = self._procedimiento.evaluar(observaciones)
+
+        # Regla 3 y 7: todos los defectos deben ser del tipo que produce este
+        # procedimiento. Se valida ANTES de agregar, para no dejar la muestra a medias.
+        clase_esperada = self._procedimiento.CLASE_DEFECTO
+        ajenos = list(filter(lambda d: not isinstance(d, clase_esperada), defectos))
+        if ajenos:
+            raise InspeccionInvalidaError(
+                f"El procedimiento '{self._procedimiento.id}' solo puede registrar "
+                f"defectos de tipo '{clase_esperada.__name__}'.",
+                defectos_ajenos=len(ajenos)
+            )
+
         for d in defectos:
             self._muestra.agregar_defecto(d)
         return defectos
@@ -127,8 +139,11 @@ class Inspeccion:
             raise InspeccionInvalidaError(
                 f"La inspección '{self._id}' ya ha sido cerrada."
             )
+        # Primero se cierra la muestra: si falla, la inspección sigue abierta y
+        # el estado queda consistente. Recién después se marca como cerrada.
+        resultado = self._muestra.cerrar(self._procedimiento.limite_gravedad_acumulada)
         self._cerrada = True
-        return self._muestra.cerrar(self._procedimiento.limite_gravedad_acumulada)
+        return resultado
 
     def __repr__(self):
         return (

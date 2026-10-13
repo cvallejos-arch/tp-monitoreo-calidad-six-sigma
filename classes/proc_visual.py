@@ -1,8 +1,11 @@
 from classes.procedimiento import Procedimiento
-from classes.defecto import Defecto
+from classes.defecto import DefectoVisual
 
 
 class ProcedimientoVisual(Procedimiento):
+    """Evalúa observaciones cualitativas del operario y genera defectos VISUAL."""
+
+    CLASE_DEFECTO = DefectoVisual
 
     def __init__(self, nivel_iluminacion_minimo=None, **kwargs):
         kwargs.setdefault("categoria_equipo_requerida", "Visual")
@@ -17,11 +20,10 @@ class ProcedimientoVisual(Procedimiento):
         """Evalúa cada observación visual. Si defecto_detectado es True,
         genera un defecto con la gravedad indicada."""
         # Primero se filtran las observaciones con defecto detectado.
-        # Luego cada observación filtrada se transforma en un Defecto VISUAL.
+        # Luego cada observación filtrada se transforma en un DefectoVisual.
         return list(
             map(
-                lambda obs: Defecto(
-                    tipo="VISUAL",
+                lambda obs: DefectoVisual(
                     descripcion=obs.descripcion,
                     gravedad=obs.gravedad
                 ),

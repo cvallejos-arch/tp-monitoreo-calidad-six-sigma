@@ -1,11 +1,11 @@
 import uuid
-from classes.validacion import validar_texto, validar_fecha_tipo
+from classes.validacion import validar_fecha_tipo, validar_nombre_tecnico
 
 
 class Equipo:
     def __init__(self, categoria, fecha_calibracion):
         self._id = uuid.uuid4()
-        self._categoria = validar_texto(categoria, "categoria")
+        self._categoria = validar_nombre_tecnico(categoria, "categoria")
         self._fecha_calibracion = validar_fecha_tipo(fecha_calibracion, "fecha_calibracion")
 
     @property

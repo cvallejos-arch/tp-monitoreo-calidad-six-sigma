@@ -1,7 +1,7 @@
 from classes.muestra import Muestra
 from classes.estado_lote import EstadoLote
 from classes.estado_muestra import EstadoMuestra
-from classes.validacion import validar_cantidad, validar_texto
+from classes.validacion import validar_cantidad, validar_nombre_tecnico
 from classes.excepciones import TransicionIlegalError
 from classes.cola import Cola
 import uuid
@@ -13,7 +13,7 @@ class Lote:
 
     def __init__(self, nombre_componentes, cantidad_fabricada):
         self._id = uuid.uuid4()
-        self._nombre_componentes = validar_texto(
+        self._nombre_componentes = validar_nombre_tecnico(
             nombre_componentes,
             "nombre_componentes"
         )

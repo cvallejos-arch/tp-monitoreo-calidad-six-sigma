@@ -1,9 +1,9 @@
-from classes.validacion import validar_texto, validar_rango_fechas
+from classes.validacion import validar_rango_fechas, validar_nombre_tecnico
 
 
 class Certificacion:
     def __init__(self, nombre, fecha_inicio, fecha_fin):
-        self._nombre = validar_texto(nombre, "nombre_certificacion")
+        self._nombre = validar_nombre_tecnico(nombre, "nombre_certificacion")
         validar_rango_fechas(fecha_inicio, fecha_fin)
         self._fecha_inicio = fecha_inicio
         self._fecha_fin = fecha_fin

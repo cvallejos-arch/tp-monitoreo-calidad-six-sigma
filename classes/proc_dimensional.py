@@ -1,8 +1,11 @@
 from classes.procedimiento import Procedimiento
-from classes.defecto import Defecto
+from classes.defecto import DefectoDimensional
 
 
 class ProcedimientoDimensional(Procedimiento):
+    """Compara mediciones contra tolerancias (mín/máx) y genera defectos DIMENSIONAL."""
+
+    CLASE_DEFECTO = DefectoDimensional
 
     def __init__(self, unidad_medida="mm", **kwargs):
         kwargs.setdefault("categoria_equipo_requerida", "Dimensional")
@@ -18,14 +21,17 @@ class ProcedimientoDimensional(Procedimiento):
         del rango [tolerancia_min, tolerancia_max], genera un defecto con
         gravedad calculada."""
         # Primero se filtran las observaciones fuera de tolerancia (desviación > 0).
-        # Luego cada observación filtrada se transforma en un Defecto DIMENSIONAL.
+        # Luego cada observación filtrada se transforma en un DefectoDimensional,
+        # que guarda la medición que lo originó.
         return list(
             map(
-                lambda obs: Defecto(
-                    tipo="DIMENSIONAL",
-                    descripcion=f"Desviación dimensional: medido={obs.valor_medido}, "
-                                f"rango=[{obs.tolerancia_min}, {obs.tolerancia_max}]",
-                    gravedad=self._calcular_gravedad(obs)
+                lambda obs: DefectoDimensional(
+                    descripcion=obs.descripcion,
+                    gravedad=self._calcular_gravedad(obs),
+                    valor_medido=obs.valor_medido,
+                    tolerancia_min=obs.tolerancia_min,
+                    tolerancia_max=obs.tolerancia_max,
+                    unidad=self._unidad_medida
                 ),
                 filter(lambda obs: obs.desviacion > 0, observaciones)
             )
