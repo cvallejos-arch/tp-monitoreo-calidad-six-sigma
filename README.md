@@ -1,395 +1,175 @@
-# Trabajo Práctico: Sistema de Monitoreo de Calidad Industrial
+# Sistema de Monitoreo de Calidad Industrial
 
-## Situación Hipotética
+Trabajo práctico de **Estructuras de Datos y Programación (ITBA)**. La consigna completa está en [ConsignaTP.md](ConsignaTP.md).
 
-**Empresa de tecnología** fabrica componentes en lotes y evalúa muestras mediante procedimientos de inspección. En la actualidad registra mediciones, calibraciones y defectos en documentos separados: puede utilizar equipos con calibración vencida, cerrar lotes incompletos y producir reportes que no explican qué defectos causaron el rechazo.
-
-
-## Solución
-El equipo presenta un prototipo que coordine inspecciones y determine la calidad de muestras y lotes. El sistema aplica umbrales definidos; y se ocupa de reportar errores o defectos encontrados.
-
-### Objetivo del sistema
-
-El prototipo deberá:
-
-- registrar lotes, muestras, profesionales, equipos y procedimientos;
-- verificar certificaciones y vigencia de calibración antes de inspeccionar;
-- ejecutar procedimientos diferentes;
-- registrar defectos y cerrar muestras mediante modificaciones de estado controladas;
-- emitir reportes de desviación trazables (asociado a una muestra y un conjunto de defectos);
-- aprobar un lote solo cuando todas sus muestras estén inspeccionadas.
-
-
-### Arquitectura del Sistema
-
-| Entidad | Representa | Objetivos | 
-| --- | --- | --- |
-| Lote | Un conjunto de componentes iguales entre sí | Permite a la empresa decidir si está listo o no para su uso. Sus datos permiten crear Muestras | 
-| Muestra | Un subconjunto identificado del lote | Defectos, estado y resultado de conformidad | 
-| Procedimiento | Interfaz abstracta que define el contrato de inspeccion | Establecer el limite de gravedad acumulada permitida y exigir el método para evaluar observaciones.
-| Procedimiento Dimensional| Especialización basada en mediciones físicas. | Comparar valores medidos contra tolerancias (mín/máx) y transformarlos en defectos de tipo "DIMENSIONAL". |
-| Procedimiento  Visual | Especialización basada en observación cualitativa. | Registrar descripciones de anomalías estéticas o funcionales y transformarlas en defectos de tipo "VISUAL". |
-| Profesional | El operario o técnico de calidad a cargo | Garantizar su propria identidad y validar si posee las certificationes requeridas vigentes en la fecha de la inspeccion | 
-| Equipo | El instrumento utilizado para medir o evaluar | Validar que sea la categoria adecuada y certificar que su calibracion no exceda el maximo legal (182 dias). | 
-| Defecto | Una anomalía específica hallada durante la evaluación. | Contener de manera inmutable el tipo, la descripción y el nivel de gravedad (escala 1 a 5). | 
-| Inspección | El evento transaccional que une todos los elementos. | Coordinar y validar los requisitos (certificación, calibración, estados) de forma previa, bloqueando el contexto durante la ejecución. | 
-| Reporte | El documento de respaldo oficial ante un rechazo. | Congelar une "foto" inalterable con las causas (defectos), fecha y responsable de cualquier muestra que resulte NO_CONFORME | 
-
-### Estructura del Repo
-
-Se detalla la función de cada archivo y clase dentro del proyecto como si ya estuviese completamente implementado:
-
-
-#### 1. Utilidades y Configuración Base
-
-- **`excepciones.py`**: Define excepciones de dominio personalizadas (ej. `DatosInvalidosError`, `TransicionIlegalError`, `CalibracionVencidaError`, `CertificacionFaltanteError`).
-
-#### 2. Entidades de Calidad (Dominio)
-- **`defecto.py` (`Defecto`)**: Representa una desviación observada. Encapsula el tipo, descripción y gravedad (1 a 5, donde 5 es crítico). Es inmutable tras su creación.
-- **`muestra.py` (`Muestra`)**: Representa un subconjunto del lote. Controla sus propios estados (`PENDIENTE`, `EN_INSPECCION`, `CONFORME`, `NO_CONFORME`). Es la encargada de agrupar defectos e impedir modificaciones una vez cerrada.
-- **`lote.py` (`Lote`)**: Representa una partida de componentes. Valida que las muestras le pertenezcan y no excedan su capacidad. Calcula si el lote es `APROBADO` o `RECHAZADO` evaluando el % de muestras no conformes (> 5%).
-- **`reporte.py` (`Reporte`)**: Generado automáticamente y de forma inmutable cuando una muestra se cierra como `NO_CONFORME`. Almacena una copia estática de las causas (defectos), responsable y fecha.
-
-#### 3. Actores y Recursos
-- **`profesional.py` (`Profesional`)**: Representa al inspector. Conoce su identidad y gestiona sus certificaciones, pudiendo validar si posee una certificación vigente para la fecha requerida.
-- **`equipo.py` (`Equipo`)**: Representa un instrumento de medición. Valida si es de la categoría correcta y si su calibración está vigente (no más de 182 días de antigüedad respecto a la fecha de inspección).
-
-#### 4. Motor de Inspecciones
-- **`inspeccion.py` (`Inspeccion`)**: Coordina el proceso. Relaciona la `Muestra`, el `Profesional`, el `Equipo` y el `Procedimiento`. Se encarga de validar los requisitos cruzados *antes* de iniciar (profesional certificado, equipo calibrado) y bloquea el contexto para que no cambien durante la ejecución.
-
-#### 5. Procedimientos y Polimorfismo
-- **`procedimiento.py` (`Procedimiento`)**: Clase abstracta (interfaz) que define el comportamiento esperado de cualquier inspección. Contiene el límite de gravedad acumulada y define el método polimórfico `evaluar(observaciones)`.
-- **`proc_dimensional.py` (`ProcedimientoDimensional`)**: Hereda de `Procedimiento`. Evalúa observaciones basadas en medidas numéricas (valor medido vs tolerancias min/max) y genera defectos de tipo "DIMENSIONAL".
-- **`proc_visual.py` (`ProcedimientoVisual`)**: Hereda de `Procedimiento`. Evalúa observaciones visuales de los operarios y genera defectos de tipo "VISUAL".
-
-#### 6. Ejecución y Pruebas
-- **`main.py`**: Punto de entrada del programa. Ejecuta una simulación completa (End-to-End) creando lotes, asignando muestras, ejecutando inspecciones visuales y dimensionales, y mostrando por consola el veredicto final.
-
-#### 7. Directorio de Tests (`/tests`)
-Pruebas automatizadas construidas con `pytest` que garantizan el cumplimiento de las 12 reglas de negocio:
-- **`test_validacion.py`**: Pruebas unitarias de las funciones de validación de datos base.
-- **`test_defecto.py`**: Pruebas de la creación, inmutabilidad y límites de gravedad (1-5).
-- **`test_muestra.py`** y **`test_estado_muestra.py`**: Pruebas de los estados (PENDIENTE, EN_INSPECCION, etc.), manejo de defectos y cálculo de conformidad.
-- **`test_lote.py`** y **`test_estado_lote.py`**: Pruebas de la agregación de muestras, porcentajes de no conformidad y la decisión final de aprobación o rechazo.
-- **`test_profesional.py`** y **`test_certificacion.py`**: Verificación de identidades y límites de vigencia de las certificaciones en la fecha de inspección.
-- **`test_equipo.py`**: Verificación de categorías compatibles y del cálculo de calibración en el límite de los 182 días.
-- **`test_procedimeinto.py`**: Comprobación del polimorfismo entre los distintos métodos visuales y dimensionales. *(Nota: archivo escrito como 'procedimeinto' en el respositorio)*.
-- **`test_inspeccion.py`**: Pruebas de validación cruzada antes de iniciar la evaluación, asegurando que el contexto se congele durante la ejecución.
-- **`test_reporte.py`**: Validación de la generación de la copia estática e inmutable de los defectos cuando una muestra resulta rechazada.
+**QuantumTech Precision** fabrica componentes en lotes. Hoy registra mediciones, calibraciones y defectos en documentos separados, y eso le permite usar equipos vencidos, cerrar lotes incompletos y emitir reportes que no explican el rechazo. Este prototipo coordina las inspecciones y decide la conformidad de muestras y lotes aplicando umbrales fijos: no hace estadística Six Sigma.
 
 ---
 
-## Cómo ejecutar (Simulación)
+## 1. Cómo ejecutarlo
 
-Dado que es un sistema Core sin UI, la ejecucion se realiza corriendo el flujo principal o los tests:
+Desde la carpeta del proyecto:
 
-1. Instalar dependencias para pruebas (solo se requiere `pytest`):
-   ```bash
-   pip install pytest
-   ```
-2. Ejecutar la suite de pruebas automatizadas:
-   ```bash
-   pytest
-   ```
-3. Ejecutar la simulación completa del flujo:
-   ```bash
-   python main.py
-   ```
-
----
-## Diagrama 
-
-```mermaid
-classDiagram
-    direction TB
-
-    %% ══════════════════════════════════════════════
-    %% Empresa (fachada del sistema)
-    %% ══════════════════════════════════════════════
-
-    class Empresa {
-        -_registros : dict~str dict~
-        +crear_registrar_lote(nombre_componentes str, cantidad_fabricada int) Lote
-        +crear_registrar_muestra(cantidad int, lote Lote) Muestra
-        +crear_registrar_profesional(nombre str) Profesional
-        +crear_registrar_equipo(categoria str, fecha_calibracion date) Equipo
-        +crear_registrar_procedimiento(tipo_procedimiento class, **kwargs) Procedimiento
-        +lanzar_inspeccion(muestra, profesional, equipo, procedimiento, fecha) Inspeccion
-        +obtener_lote(lote_id) Lote
-        +obtener_muestra(muestra_id) Muestra
-        +listar_lotes(**filtros) list~Lote~
-        +listar_inspecciones(**filtros) list~Inspeccion~
-        +listar_muestras(**filtros) list~Muestra~
-    }
-
-    %% ══════════════════════════════════════════════
-    %% Enums
-    %% ══════════════════════════════════════════════
-
-    class EstadoMuestra {
-        <<enum>>
-        PENDIENTE
-        EN_INSPECCION
-        CONFORME
-        NO_CONFORME
-    }
-
-    class EstadoLote {
-        <<enum>>
-        EN_PRODUCCION
-        APROBADO
-        RECHAZADO
-    }
-
-    %% ══════════════════════════════════════════════
-    %% Defecto
-    %% ══════════════════════════════════════════════
-
-    class Defecto {
-        -_tipo : str
-        -_descripcion : str
-        -_gravedad : int
-        +tipo : str
-        +descripcion : str
-        +gravedad : int
-        +es_critico() bool
-        +copia() Defecto
-    }
-
-    %% ══════════════════════════════════════════════
-    %% Muestra
-    %% ══════════════════════════════════════════════
-
-    class Muestra {
-        -_id : str
-        -_cantidad : int
-        -_estado : EstadoMuestra
-        -_defectos : list~Defecto~
-        -_lote_id : str
-        -_inspeccion : Inspeccion
-        -_reporte : Reporte
-        +id : str
-        +cantidad : int
-        +estado : EstadoMuestra
-        +defectos : tuple~Defecto~
-        +lote_id : str
-        +inspeccion : Inspeccion
-        +reporte : Reporte
-
-        +asignar_inspeccion(inspeccion Inspeccion)
-        +iniciar_inspeccion()
-        +agregar_defecto(defecto Defecto)
-        +cerrar(limite_gravedad int)
-        +suma_gravedades() int
-        +tiene_critico() bool
-    }
-
-    %% ══════════════════════════════════════════════
-    %% Lote
-    %% ══════════════════════════════════════════════
-
-    class Lote {
-        -_id : str
-        -_nombre_componentes : str
-        -_cantidad_fabricada : int
-        -_estado : EstadoLote
-        -_muestras : dict~str Muestra~
-        +id : str
-        +nombre_componentes : str
-        +cantidad_fabricada : int
-        +estado : EstadoLote
-        +muestras : tuple~Muestra~
-        +crear_muestra(cantidad int) Muestra
-        +decidir() EstadoLote
-        +porcentaje_no_conforme() float
-        +todas_cerradas() bool
-        +total_defectos_criticos() int
-        +conteo_por_tipo() dict~str int~
-    }
-
-    %% ══════════════════════════════════════════════
-    %% Certificacion
-    %% ══════════════════════════════════════════════
-
-    class Certificacion {
-        -_nombre : str
-        -_fecha_inicio : date
-        -_fecha_fin : date
-        +nombre : str
-        +fecha_inicio : date
-        +fecha_fin : date
-        +es_vigente(fecha date) bool
-    }
-
-    %% ══════════════════════════════════════════════
-    %% Profesional
-    %% ══════════════════════════════════════════════
-
-    class Profesional {
-        -_id : str
-        -_nombre : str
-        -_certificaciones : dict~str Certificacion~
-        +id : str
-        +nombre : str
-        +certificaciones : dict~str Certificacion~
-        +agregar_certificacion(cert Certificacion)
-        +tiene_certificacion_vigente(nombre str, fecha date) bool
-    }
-
-    %% ══════════════════════════════════════════════
-    %% Equipo
-    %% ══════════════════════════════════════════════
-
-    class Equipo {
-        -_id : str
-        -_categoria : str
-        -_fecha_calibracion : date
-        +id : str
-        +categoria : str
-        +fecha_calibracion : date
-        +esta_calibrado(fecha date) bool
-        +es_compatible(categoria_requerida str) bool
-    }
-
-    %% ══════════════════════════════════════════════
-    %% Inspeccion
-    %% ══════════════════════════════════════════════
-
-    class Inspeccion {
-        -_id : str
-        -_muestra : Muestra
-        -_profesional : Profesional
-        -_equipo : Equipo
-        -_procedimiento : Procedimiento
-        -_fecha : date
-        -_cerrada : bool
-        +id : str
-        +muestra_id : str
-        +profesional_id : str
-        +equipo_id : str
-        +procedimiento_id : str
-        +fecha : date
-        +cerrada : bool
-        +ejecutar(observaciones list) list~Defecto~
-        +cerrar()
-    }
-
-    %% ══════════════════════════════════════════════
-    %% Reporte
-    %% ══════════════════════════════════════════════
-
-    class Reporte {
-        -_id : str
-        -_muestra_id : str
-        -_lote_id : str
-        -_profesional_id : str
-        -_fecha : date
-        -_defectos : tuple~Defecto~
-        +id : str
-        +muestra_id : str
-        +lote_id : str
-        +profesional_id : str
-        +fecha : date
-        +defectos : tuple~Defecto~
-    }
-
-    %% ══════════════════════════════════════════════
-    %% Polymorphisme — Procedimiento
-    %% ══════════════════════════════════════════════
-
-    class Procedimiento {
-        <<abstract>>
-        -_id : str
-        -_limite_gravedad_acumulada : int
-        -_categoria_equipo_requerida : str
-        -_certificacion_requerida : str
-        +id : str
-        +limite_gravedad_acumulada : int
-        +categoria_equipo_requerida : str
-        +certificacion_requerida : str
-        +evaluar(observaciones list) list~Defecto~*
-    }
-    note for Procedimiento "_certificacion_requerida puede ser None (regla 5)"
-
-    class ProcedimientoDimensional {
-        -_unidad_medida : str
-        +unidad_medida : str
-        +evaluar(observaciones list) list~Defecto~
-        -_calcular_gravedad(obs) int
-    }
-
-    class ProcedimientoVisual {
-        -_nivel_iluminacion_minimo : int
-        +nivel_iluminacion_minimo : int
-        +evaluar(observaciones list) list~Defecto~
-    }
-
-    %% ══════════════════════════════════════════════
-    %% Observaciones
-    %% ══════════════════════════════════════════════
-
-    class ObservacionDimensional {
-        -_valor_medido : float
-        -_tolerancia_min : float
-        -_tolerancia_max : float
-        -_descripcion : str
-        +valor_medido : float
-        +tolerancia_min : float
-        +tolerancia_max : float
-        +descripcion : str
-        +desviacion : float
-        +tolerancia : float
-    }
-    note for ObservacionDimensional "desviacion y tolerancia son propiedades calculadas"
-
-    class ObservacionVisual {
-        -_descripcion : str
-        -_defecto_detectado : bool
-        -_gravedad : int
-        +descripcion : str
-        +defecto_detectado : bool
-        +gravedad : int
-    }
-
-    %% ══════════════════════════════════════════════
-    %% RELATIONS
-    %% ══════════════════════════════════════════════
-
-    %% Estructura base
-    Lote "1" *-- "1..*" Muestra : crea y contiene
-    Muestra "1" *-- "0..*" Defecto : acumula
-    Muestra "1" --> "0..1" Reporte : genera si NO_CONFORME
-
-    %% Dependencias enums
-    Muestra ..> EstadoMuestra : usa
-    Lote ..> EstadoLote : usa
-
-    %% Inspeccion
-    Inspeccion "1" --> "1" Muestra : evalua
-    Inspeccion "1" --> "1" Profesional : ejecutada por
-    Inspeccion "1" --> "1" Equipo : utiliza
-    Inspeccion "1" --> "1" Procedimiento : guiada por
-
-    %% Profesional
-    Profesional "1" *-- "0..*" Certificacion : posee
-
-    %% Reporte
-    Reporte "1" *-- "1..*" Defecto : copia fija
-
-    %% Herencia — Procedimientos
-    Procedimiento <|-- ProcedimientoDimensional
-    Procedimiento <|-- ProcedimientoVisual
-
-    %% Observaciones — usadas por los procedimientos
-    ProcedimientoDimensional ..> ObservacionDimensional : evalua
-    ProcedimientoVisual ..> ObservacionVisual : evalua
-
-    %% Empresa — fachada que crea y coordina todo
-    Empresa ..> Lote : crea y registra
-    Empresa ..> Muestra : crea y registra
-    Empresa ..> Profesional : crea y registra
-    Empresa ..> Equipo : crea y registra
-    Empresa ..> Procedimiento : crea y registra
-    Empresa ..> Inspeccion : lanza
+```bash
+py main.py            # simulación completa por consola
+py -m pytest -q       # 297 tests
 ```
 
+`main.py` crea un lote de 1000 tornillos con 20 muestras, muestra tres inspecciones rechazadas (profesional sin certificación, equipo vencido y equipo incompatible), inspecciona las 20 muestras en orden y decide el lote: sale **APROBADO** con exactamente 5 % no conforme.
+
+---
+
+## 2. Flujo de una inspección
+
+1. **Registro:** `Empresa` crea el lote, y el lote crea sus muestras y las pone en una **cola** de pendientes. También se registran profesionales con sus certificaciones, equipos con su fecha de calibración y procedimientos.
+2. **Validación previa:** al crear una `Inspeccion` se controla que la muestra esté `PENDIENTE`, que el profesional tenga la certificación vigente, y que el equipo sea compatible y esté calibrado. Si algo falla, se lanza una excepción y la muestra no cambia.
+3. **Ejecución:** el procedimiento transforma las observaciones en defectos con su propio criterio (polimorfismo). La inspección verifica que esos defectos sean del tipo que corresponde al procedimiento.
+4. **Cierre:** la muestra queda `CONFORME` o `NO_CONFORME`. Si es no conforme, genera un `Reporte` con una copia fija de sus defectos. Cada cambio de estado se guarda en una **pila** (el historial).
+5. **Decisión:** cuando todas las muestras están cerradas, el lote queda `APROBADO` o `RECHAZADO`, y esa decisión no se puede cambiar.
+
+---
+
+## 3. Clases y relaciones (en orden de importancia)
+
+**Muestra** (`muestra.py`): un subconjunto del lote. Es la única clase que cambia su propio estado.
+- **Atributos:** `id`, `cantidad`, `lote_id`, `estado` (el tope de la pila), `historial_estados`, `defectos` (tupla), `reporte`.
+- **Métodos:** `iniciar_inspeccion()`, `agregar_defecto()`, `cerrar(limite)`, `suma_gravedades()` y `tiene_critico()`.
+- **Relaciones:** pertenece a un **Lote**, que la crea (composición). Tiene una **Pila** de `EstadoMuestra` (composición), guarda **Defectos**, crea su **Reporte** y conoce la **Inspección** que la evalúa.
+
+**Lote** (`lote.py`): una partida de componentes. Decide si se aprueba o se rechaza.
+- **Atributos:** `id`, `nombre_componentes`, `cantidad_fabricada`, `estado`, `muestras` y la constante `ESTADOS_FINALES`.
+- **Métodos:**
+  - `crear_muestra(cantidad)`: controla que no se supere la cantidad fabricada;
+  - `siguiente_muestra_pendiente()` y `pendientes_en_orden()`;
+  - `decidir()`, `porcentaje_no_conforme()` y `todas_cerradas()`;
+  - `total_defectos_criticos()` y `conteo_por_tipo()`.
+- **Relaciones:** contiene sus **Muestras** en un diccionario `{id: muestra}` y una **Cola** de pendientes (composición).
+
+**Inspeccion** (`inspeccion.py`): une la muestra, el profesional, el equipo, el procedimiento y la fecha.
+- **Qué hace:** en el constructor valida todos los requisitos antes de empezar. Después guarda ese contexto, que no se puede modificar.
+- **Métodos:** `ejecutar(observaciones)` y `cerrar()`.
+- **Relaciones:** se asocia con **Muestra**, **Profesional**, **Equipo** y **Procedimiento**.
+
+**Procedimiento** (`procedimiento.py`): clase **abstracta** (`ABC`) que define el contrato de toda inspección.
+- **Atributos:** `limite_gravedad_acumulada`, `categoria_equipo_requerida`, `certificacion_requerida` y `CLASE_DEFECTO`.
+- **Método abstracto:** `evaluar(observaciones)`.
+- **ProcedimientoVisual** (`proc_visual.py`): hereda de `Procedimiento`. Recibe `ObservacionVisual` y produce `DefectoVisual`.
+- **ProcedimientoDimensional** (`proc_dimensional.py`): hereda de `Procedimiento`. Recibe `ObservacionDimensional`, calcula la gravedad según cuánto se pasa la medida de la tolerancia (`_calcular_gravedad`) y produce `DefectoDimensional`.
+
+**Defecto** (`defecto.py`): una desviación observada. Es inmutable: tiene getters y no tiene setters.
+- **Atributos:** `tipo`, `descripcion` y `gravedad` (de 1 a 5). Métodos: `es_critico()` y `copia()`.
+- **DefectoVisual:** hereda de `Defecto` con el tipo fijo en `"VISUAL"`.
+- **DefectoDimensional:** hereda de `Defecto` y además guarda `valor_medido`, `tolerancia_min`, `tolerancia_max` y `unidad`. Si el valor medido está dentro del rango, lanza error, porque no sería un defecto.
+
+**Reporte** (`reporte.py`): el respaldo de una muestra no conforme.
+- **Atributos:** `muestra_id`, `lote_id`, `profesional_id`, `fecha`, `defectos` (tupla de copias) e `historial_estados`.
+- Lo crea la **Muestra** al cerrarse como no conforme. No se puede modificar.
+
+**Profesional** (`profesional.py`): quien ejecuta la inspección.
+- **Atributos:** `id`, `nombre` y `certificaciones` (diccionario `{nombre: Certificacion}`).
+- **Métodos:** `agregar_certificacion()`, `tiene_certificacion_vigente(nombre, fecha)` y `certificaciones_vigentes(fecha)`.
+
+**Certificacion** (`certificacion.py`): `nombre`, `fecha_inicio` y `fecha_fin`. El método `es_vigente(fecha)` cuenta los dos extremos como válidos. Cada **Profesional** guarda las suyas (agregación).
+
+**Equipo** (`equipo.py`): un instrumento de medición.
+- **Atributos:** `id`, `categoria` y `fecha_calibracion`.
+- **Métodos:** `esta_calibrado(fecha)`, que acepta hasta 182 días contando los dos extremos, y `es_compatible(categoria)`.
+
+**Observaciones** (`observacion_visual.py` y `observacion_dimensional.py`): los datos de entrada de cada procedimiento.
+- **Visual:** `descripcion`, `defecto_detectado` y `gravedad`.
+- **Dimensional:** `valor_medido`, `tolerancia_min` y `tolerancia_max`. También calcula `desviacion` y `tolerancia`.
+
+**Empresa** (`empresa.py`): el punto de entrada del dominio. Guarda todo en un registro de diccionarios por categoría.
+- **Registro y lanzamiento:**
+  - `crear_registrar_*()` para cada entidad;
+  - `crear_registrar_procedimiento(tipo, **kwargs)`;
+  - `lanzar_inspeccion()`;
+  - `lanzar_siguiente_inspeccion(lote, ...)`, que toma la muestra del frente de la cola del lote.
+- **Consultas:** `listar_lotes()`, `listar_muestras()` y `listar_inspecciones()` aceptan filtros `**kwargs`. `resumen()` da la cantidad de cada categoría.
+
+**Estructuras de datos propias:**
+- **Nodo** (`nodo.py`): guarda un `dato` y la referencia `siguiente`.
+- **ListaEnlazada** (`lista_enlazada.py`): lista simple con `inicio`, `fin` y tamaño. Todos sus datos son de un mismo tipo. Implementa `__len__` y `__iter__` (con `yield`), así que funciona con `for`, `map`, `filter` y `sum`.
+- **Pila** (`pila.py`, LIFO) y **Cola** (`cola.py`, FIFO): usan una `ListaEnlazada` por dentro. La pila tiene `push`, `pop`, `peek`, `isEmpty` y `size`. La cola tiene `put`, `get`, `front`, `qsize`, `empty` y `full`, y acepta un `maxsize` opcional.
+
+**Soporte:**
+- **`EstadoMuestra` y `EstadoLote`:** enums con los estados posibles.
+- **`validacion.py`:** funciones de validación reutilizables, entre ellas `validar_texto`, que acepta solo letras, y `validar_nombre_tecnico`, que admite números y `- . /` (por ejemplo, "ISO 9001").
+- **`excepciones.py`:** jerarquía de excepciones propias con base `CalidadError`, que acepta `**detalles`. Incluye `DatosInvalidosError`, `EquipoNoAptoError`, `CertificacionNoVigenteError`, `TransicionIlegalError`, `InspeccionInvalidaError`, `EstructuraVaciaError` y `EstructuraLlenaError`.
+
+---
+
+## 4. Reglas de negocio: dónde se cumplen
+
+| # | Regla | Dónde | Tests |
+|---|---|---|---|
+| 1 | Ids únicos y no vacíos; cantidades enteras positivas | `uuid4` en cada constructor; `validar_cantidad` | `test_reglas_consigna`, `test_validacion` |
+| 2 | La muestra pertenece a un solo lote, no se puede mover y no supera la cantidad fabricada | `Lote.crear_muestra`; `lote_id` solo tiene getter | `test_lote` |
+| 3 | Gravedad entre 1 y 5; datos del defecto coherentes con su procedimiento | `validar_gravedad`; `DefectoVisual` y `DefectoDimensional`; `CLASE_DEFECTO` | `test_defecto`, `test_reglas_consigna` |
+| 4 | Calibración válida hasta 182 días, contando los extremos | `Equipo.esta_calibrado` | `test_equipo` |
+| 5 | Certificación vigente, contando los extremos; si falta, la muestra no cambia | `Certificacion.es_vigente`; validación en `Inspeccion.__init__` | `test_certificacion`, `test_inspeccion` |
+| 6 | Solo una muestra `PENDIENTE` inicia, una sola inspección por muestra, con requisitos fijos | `Inspeccion.__init__`; `Muestra.asignar_inspeccion` | `test_inspeccion` |
+| 7 | Evaluación polimórfica, sin defectos ajenos | `evaluar()` en cada subclase; control en `Inspeccion.ejecutar` | `test_procedimiento`, `test_reglas_consigna` |
+| 8 | No conforme si hay un crítico o si la suma supera el límite | `Muestra.cerrar` | `test_muestra` |
+| 9 | Una muestra cerrada no se puede modificar ni reinspeccionar | `Muestra.agregar_defecto`; `defectos` es una tupla | `test_muestra`, `test_inspeccion` |
+| 10 | Un único reporte con copia inmutable, solo si es no conforme | `Muestra.cerrar` → `Reporte` | `test_reporte` |
+| 11 | El lote se decide solo si todas sus muestras están cerradas; rechazado si supera el 5 %; decisión final | `Lote.decidir` | `test_lote`, `test_estado_lote` |
+| 12 | Las consultas solo miran muestras cerradas y no tienen efectos | `_muestras_cerradas`, `total_defectos_criticos`, `conteo_por_tipo` | `test_lote` |
+
+---
+
+## 5. Decisiones de diseño
+
+- **¿Cómo reciben los procedimientos observaciones distintas sin exponer la muestra?** Cada procedimiento recibe sus propios objetos de observación (`ObservacionVisual` u `ObservacionDimensional`) y devuelve una lista de defectos. Nunca toca la muestra: es la `Inspeccion` la que agrega los defectos.
+- **¿Quién valida todo antes de iniciar?** El constructor de `Inspeccion`. Si una validación falla, se lanza la excepción **antes** de cambiar el estado, así que la muestra queda intacta.
+- **¿Cómo se mantiene fijo el contexto?** La inspección guarda la muestra, el profesional, el equipo, el procedimiento y la fecha en atributos privados con solo getters. El procedimiento tampoco tiene setters, así que sus requisitos no pueden cambiar a mitad de la ejecución.
+- **¿La conformidad se guarda o se calcula?** Se calcula a partir de los defectos en el momento del cierre y se guarda como estado final. No hay contradicción posible, porque después del cierre no se pueden agregar defectos.
+- **¿Cómo se copia el reporte de forma estable?** `Reporte` guarda una tupla con `copia()` de cada defecto. Cada subclase redefine `copia()` para conservar sus datos propios.
+- **¿Dónde se decide el lote?** En `Lote.decidir()`, que solo mira el estado de las muestras. No sabe qué procedimiento usó cada una, así que agregar un procedimiento nuevo no afecta la decisión.
+
+---
+
+## 6. Conceptos de la materia aplicados
+
+| Concepto | Dónde se aplica |
+|---|---|
+| **POO y encapsulamiento** | Atributos privados (`_x`) con `@property`; ningún estado se cambia directamente desde afuera |
+| **Herencia y polimorfismo** | `Procedimiento` → `ProcedimientoVisual` / `ProcedimientoDimensional` (mismo `evaluar()`, distinto criterio); `Defecto` → `DefectoVisual` / `DefectoDimensional`; `CalidadError` → excepciones propias |
+| **Clase abstracta** | `Procedimiento(ABC)` con `@abstractmethod evaluar` |
+| **Composición, agregación y asociación** | Lote–Muestra y Muestra–Pila (composición); Profesional–Certificación (agregación); Inspección con sus 4 componentes (asociación) |
+| **Atributos de clase y constantes** | `Lote.ESTADOS_FINALES`, `Empresa.CLASES_POR_CATEGORIA`, `CLASE_DEFECTO`, `TIPO` |
+| **Métodos mágicos** | `__repr__`, `__str__`, `__len__` y `__iter__` en `ListaEnlazada`, `Pila` y `Cola` |
+| **Excepciones propias** | Jerarquía con base `CalidadError` y `**detalles`; `try/except` en `main.py` |
+| **`lambda`, `map`, `filter`, `all`, `any`, `sum`** | `Lote` (porcentaje, críticos, cerradas), `evaluar()` de ambos procedimientos, `Empresa._filtrar`, `Muestra.suma_gravedades`, `Reporte` (copias), `validar_nombre_tecnico` |
+| **Diccionarios** | Registro de `Empresa` (`{categoría: {id: objeto}}`) recorrido con `.items()`; `Lote._muestras`; certificaciones de `Profesional`; `conteo_por_tipo` con `.get()` |
+| **`*args` / `**kwargs`** | `crear_registrar_procedimiento(tipo, **kwargs)`, filtros `listar_*(**filtros)`, `CalidadError(**detalles)` |
+| **Tuplas** | Retornos inmutables: `defectos`, `muestras`, `historial_estados`, `pendientes_en_orden()` |
+| **Nodos y lista enlazada** | `Nodo` y `ListaEnlazada` (simple, con `inicio`/`fin`), con un solo tipo de dato por lista |
+| **Pila (LIFO)** | Historial de estados de cada `Muestra`: el `peek()` es el estado actual |
+| **Cola (FIFO)** | Muestras pendientes del `Lote`: se inspeccionan en orden de creación |
+| **Generadores (`yield`)** | `ListaEnlazada.__iter__` recorre los nodos sin copiarlos |
+| **Fechas** | `date` y `timedelta` en calibraciones, certificaciones e inspecciones |
+| **Tests con pytest** | 297 tests, con fixtures (`conftest.py`), `parametrize` y `monkeypatch` |
+
+---
+
+## 7. Uso de IA
+
+El modelo de dominio, las clases base y los tests iniciales los construimos nosotros. Después usamos Claude (Claude Code) para revisar el código y aplicar los conceptos teóricos en los lugares que correspondía. Los cambios más importantes en los que ayudó:
+
+**Detección de errores**
+- Un commit dejó `Muestra` usando `self._estado`, un atributo que ya no existía, y eso hacía fallar 33 tests. Ese mismo commit había deshecho mejoras anteriores en `Lote`. Se identificó la causa y se corrigió.
+- `Nodo.set_dato` comparaba el tipo del dato nuevo con `type(self)` en lugar de `type(self.dato)`, así que siempre fallaba.
+- `Reporte` no aceptaba el historial de estados que `Muestra` le pasaba.
+- `Inspeccion.cerrar()` marcaba la inspección como cerrada antes de cerrar la muestra: si el cierre fallaba, el estado quedaba inconsistente.
+- `validar_texto` rechazaba nombres reales como "ISO 9001" o "Tornillos M8". Se agregó `validar_nombre_tecnico`.
+- Un filtro mal escrito en `Empresa` (por ejemplo `estdo=`) devolvía una lista vacía sin avisar. Ahora lanza `DatosInvalidosError`.
+
+**Dónde aplicar los conceptos teóricos**
+- Reemplazar bucles por `map`, `filter` y `lambda` en `Lote`, en los procedimientos, en `Empresa` y en `main.py`, sin usar `map` solo para provocar efectos.
+- Dónde usar la pila y la cola dentro del dominio: el historial de estados de la muestra y la cola de pendientes del lote. Adaptar sus métodos a los nombres de la cátedra.
+- Agregar `__len__` y `__iter__` a la lista enlazada para que funcione con `for`, `map` y `filter`.
+- Convertir `Procedimiento` en clase abstracta y crear subclases de `Defecto` para cumplir la regla 3.
+- Agregar tests para las pruebas mínimas de la consigna que todavía no estaban cubiertas, por ejemplo los identificadores únicos.
+
+Todo el código generado lo revisamos, lo probamos con `pytest` y lo podemos explicar.
