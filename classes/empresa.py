@@ -1,9 +1,12 @@
+import json
+
 from classes.lote import Lote
 from classes.muestra import Muestra
 from classes.inspeccion import Inspeccion
 from classes.profesional import Profesional
 from classes.equipo import Equipo
 from classes.procedimiento import Procedimiento
+from classes.reporte import Reporte
 from classes.excepciones import EstructuraVaciaError, DatosInvalidosError
 
 class Empresa:
@@ -134,3 +137,46 @@ class Empresa:
                 self._registros.items()
             )
         )
+
+    # --- Serialización JSON de reportes ---
+
+    def reportes(self):
+        """Retorna los reportes de desviación de todas las muestras no conformes."""
+        con_reporte = filter(
+            lambda m: m.reporte is not None,
+            self._registros["muestras"].values()
+        )
+        return list(map(lambda m: m.reporte, con_reporte))
+
+    def exportar_reportes_json(self, ruta):
+        """Guarda los reportes en un archivo JSON legible (serialización).
+        Retorna la cantidad de reportes guardados."""
+        datos = list(map(lambda r: r.to_dict(), self.reportes()))
+        with open(ruta, "w", encoding="utf-8") as f:
+            json.dump(datos, f, indent=4, ensure_ascii=False)
+        return len(datos)
+
+    @staticmethod
+    def cargar_reportes_json(ruta):
+        """Lee un archivo generado por exportar_reportes_json y reconstruye los
+        reportes (deserialización). Lanza DatosInvalidosError si el contenido no
+        es un JSON de reportes válido."""
+        with open(ruta, "r", encoding="utf-8") as f:
+            try:
+                datos = json.load(f)
+            except json.JSONDecodeError as e:
+                raise DatosInvalidosError(
+                    f"El archivo '{ruta}' no contiene un JSON válido.", ruta=str(ruta)
+                ) from e
+
+        if not isinstance(datos, list):
+            raise DatosInvalidosError(
+                f"El archivo '{ruta}' debe contener una lista de reportes.", ruta=str(ruta)
+            )
+        try:
+            return list(map(Reporte.from_dict, datos))
+        except (KeyError, TypeError, ValueError) as e:
+            raise DatosInvalidosError(
+                f"El archivo '{ruta}' tiene reportes con datos incompletos o inválidos.",
+                ruta=str(ruta)
+            ) from e

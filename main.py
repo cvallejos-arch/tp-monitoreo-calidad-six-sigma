@@ -284,6 +284,26 @@ def main():
     for categoria, cantidad in empresa.resumen().items():
         print(f"  - {categoria}: {cantidad}")
 
+    # ============================================================
+    #  11. SERIALIZACIÓN JSON DE LOS REPORTES
+    # ============================================================
+    separador("11. SERIALIZACIÓN JSON DE LOS REPORTES")
+
+    ruta_json = "reportes.json"
+    cantidad = empresa.exportar_reportes_json(ruta_json)  # to_dict() + json.dump
+    print(f"Se exportaron {cantidad} reporte(s) a '{ruta_json}' (archivo legible)")
+
+    reportes_cargados = Empresa.cargar_reportes_json(ruta_json)  # json.load + Clase(**data)
+    for r in reportes_cargados:
+        print(f"  - Reporte cargado: {r}")
+        print(f"    Defectos: {list(map(lambda d: d.descripcion, r.defectos))}")
+
+    iguales = all(map(
+        lambda par: par[0].to_dict() == par[1].to_dict(),
+        zip(empresa.reportes(), reportes_cargados)
+    ))
+    print(f"Los reportes cargados coinciden con los originales: {iguales}")
+
     print(f"\n{'='*60}")
     print("  [OK] EJECUCION COMPLETA - TODAS LAS FUNCIONALIDADES DEMOSTRADAS")
     print(f"{'='*60}")

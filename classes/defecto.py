@@ -33,6 +33,31 @@ class Defecto:
             self._gravedad
         )
 
+    # --- Serialización JSON ---
+
+    def to_dict(self):
+        """Retorna los datos del defecto como dict (formato equivalente a JSON)."""
+        return {
+            "tipo": self._tipo,
+            "descripcion": self._descripcion,
+            "gravedad": self._gravedad
+        }
+
+    @staticmethod
+    def from_dict(data):
+        """Reconstruye un defecto desde un dict generado por to_dict().
+        Usa el 'tipo' para elegir la subclase y le pasa el resto con Clase(**data)."""
+        clases_por_tipo = {
+            DefectoVisual.TIPO: DefectoVisual,
+            DefectoDimensional.TIPO: DefectoDimensional,
+        }
+        datos = dict(data)                  # copia: no modifica el dict recibido
+        clase = clases_por_tipo.get(datos["tipo"])
+        if clase is None:
+            return Defecto(**datos)         # tipo genérico: el constructor recibe 'tipo'
+        datos.pop("tipo")                   # las subclases fijan su tipo solas
+        return clase(**datos)
+
     def __repr__(self):
         return (
             f"Defecto(tipo='{self._tipo}', descripcion='{self._descripcion}', "
@@ -98,6 +123,18 @@ class DefectoDimensional(Defecto):
     @property
     def unidad(self):
         return self._unidad
+
+    def to_dict(self):
+        """Agrega a los datos comunes la medición que originó el defecto.
+        Las claves coinciden con los parámetros del constructor."""
+        datos = super().to_dict()
+        datos.update({
+            "valor_medido": self._valor_medido,
+            "tolerancia_min": self._tolerancia_min,
+            "tolerancia_max": self._tolerancia_max,
+            "unidad": self._unidad
+        })
+        return datos
 
     def copia(self):
         return DefectoDimensional(

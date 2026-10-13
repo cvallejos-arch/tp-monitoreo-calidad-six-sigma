@@ -212,3 +212,6 @@ GUIA_EXPOSICION_ORAL.md
 .gemini/
 .claude/
 .cline/
+
+# Archivos generados por main.py (serialización)
+reportes.json
