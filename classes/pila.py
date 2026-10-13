@@ -26,10 +26,8 @@ class Pila:
 
     def historial(self):
         """Tupla ordenada del elemento más antiguo al más nuevo (copia inmutable)."""
-        elementos = []
-        for dato in self._lista:      # itera del tope hacia abajo
-            elementos.insert(0, dato)
-        return tuple(elementos)
+        # La lista se recorre del tope hacia abajo, por eso se invierte.
+        return tuple(reversed(list(self._lista)))
 
     def __len__(self):
         return len(self._lista)

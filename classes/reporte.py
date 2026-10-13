@@ -3,7 +3,8 @@ import uuid
 
 class Reporte:
 
-    def __init__(self, muestra_id, lote_id, profesional_id, fecha, defectos):
+    def __init__(self, muestra_id, lote_id, profesional_id, fecha, defectos,
+                 historial_estados=()):
         self._id = uuid.uuid4()
         self._muestra_id = muestra_id
         self._lote_id = lote_id
@@ -11,6 +12,8 @@ class Reporte:
         self._fecha = fecha
         # Copia inmutable usando map() para copiar cada defecto
         self._defectos = tuple(map(lambda d: d.copia(), defectos))
+        # Recorrido de estados de la muestra, del más antiguo al más nuevo
+        self._historial_estados = tuple(historial_estados)
 
     @property
     def id(self):
@@ -35,6 +38,10 @@ class Reporte:
     @property
     def defectos(self):
         return self._defectos
+
+    @property
+    def historial_estados(self):
+        return self._historial_estados
 
     def __repr__(self):
         return (

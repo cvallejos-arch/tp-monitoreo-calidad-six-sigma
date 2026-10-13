@@ -30,7 +30,7 @@ class Muestra:
         return self._historial.tope()
 
     @property
-    def historial_estados(self):                    # NUEVO
+    def historial_estados(self):
         """Tupla inmutable, del estado más antiguo al más nuevo."""
         return self._historial.historial()
 
@@ -51,9 +51,9 @@ class Muestra:
     def reporte(self):
         return self._reporte
 
-    def _cambiar_estado(self, nuevo):               # NUEVO
+    def _cambiar_estado(self, nuevo):
+        """Registra el nuevo estado en el historial (pila): el tope es el estado actual."""
         self._historial.apilar(nuevo)
-
 
     def asignar_inspeccion(self, inspeccion):
         """Asigna la inspección a la muestra (encapsulación correcta)."""
@@ -67,19 +67,19 @@ class Muestra:
 
     def iniciar_inspeccion(self):
         """Transición PENDIENTE → EN_INSPECCION."""
-        if self._estado != EstadoMuestra.PENDIENTE:
+        if self.estado != EstadoMuestra.PENDIENTE:
             raise TransicionIlegalError(
                 f"No se pudo iniciar la inspección: la muestra '{self._id}' "
-                f"está en estado {self._estado.value}, se espera PENDIENTE."
+                f"está en estado {self.estado.value}, se espera PENDIENTE."
             )
         self._cambiar_estado(EstadoMuestra.EN_INSPECCION)
     
     def agregar_defecto(self, defecto):
         """Agrega un defecto a la muestra. Solo se puede en estado EN_INSPECCION."""
-        if self._estado != EstadoMuestra.EN_INSPECCION:
+        if self.estado != EstadoMuestra.EN_INSPECCION:
             raise TransicionIlegalError(
                 f"No se pudo agregar un defecto: la muestra '{self._id}' "
-                f"está en estado {self._estado.value}, se espera EN_INSPECCION."
+                f"está en estado {self.estado.value}, se espera EN_INSPECCION."
             )
         self._defectos.append(defecto)
 
@@ -87,10 +87,10 @@ class Muestra:
         """Cierra la muestra determinando su conformidad.
         NO_CONFORME si tiene defecto crítico (gravedad 5) o suma > límite.
         CONFORME en caso contrario. Ambos estados son finales."""
-        if self._estado != EstadoMuestra.EN_INSPECCION:
+        if self.estado != EstadoMuestra.EN_INSPECCION:
             raise TransicionIlegalError(
                 f"No se pudo cerrar la muestra '{self._id}': "
-                f"está en estado {self._estado.value}, se espera EN_INSPECCION."
+                f"está en estado {self.estado.value}, se espera EN_INSPECCION."
             )
 
         if self.tiene_critico() or self.suma_gravedades() > limite_gravedad:
@@ -99,7 +99,7 @@ class Muestra:
             self._cambiar_estado(EstadoMuestra.CONFORME)
 
         # Generar reporte si es no conforme
-        if self._estado == EstadoMuestra.NO_CONFORME:
+        if self.estado == EstadoMuestra.NO_CONFORME:
             self._reporte = Reporte(
                 muestra_id=self._id,
                 lote_id=self._lote_id,
@@ -122,6 +122,6 @@ class Muestra:
     def __repr__(self):
         return (
             f"Muestra(id={self._id}, cantidad={self._cantidad}, "
-            f"estado={self._estado.value}, defectos={len(self._defectos)}, "
+            f"estado={self.estado.value}, defectos={len(self._defectos)}, "
             f"lote_id={self._lote_id})"
         )

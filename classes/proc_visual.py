@@ -16,14 +16,15 @@ class ProcedimientoVisual(Procedimiento):
     def evaluar(self, observaciones):
         """Evalúa cada observación visual. Si defecto_detectado es True,
         genera un defecto con la gravedad indicada."""
-        defectos = []
-        for obs in observaciones:
-            if obs.defecto_detectado:
-                defectos.append(
-                    Defecto(
-                        tipo="VISUAL",
-                        descripcion=obs.descripcion,
-                        gravedad=obs.gravedad
-                    )
-                )
-        return defectos
+        # Primero se filtran las observaciones con defecto detectado.
+        # Luego cada observación filtrada se transforma en un Defecto VISUAL.
+        return list(
+            map(
+                lambda obs: Defecto(
+                    tipo="VISUAL",
+                    descripcion=obs.descripcion,
+                    gravedad=obs.gravedad
+                ),
+                filter(lambda obs: obs.defecto_detectado, observaciones)
+            )
+        )

@@ -2,7 +2,7 @@ from classes.muestra import Muestra
 from classes.estado_lote import EstadoLote
 from classes.estado_muestra import EstadoMuestra
 from classes.validacion import validar_cantidad, validar_texto
-from classes.excepciones import TransicionIlegalError, DatosInvalidosError
+from classes.excepciones import TransicionIlegalError
 from classes.cola import Cola
 import uuid
 
@@ -69,7 +69,7 @@ class Lote:
         self._pendientes.encolar(muestra)
         return muestra
 
- # --- Cola de pendientes ---
+    # --- Cola de pendientes ---
 
     def siguiente_muestra_pendiente(self):
         """Retorna la próxima muestra PENDIENTE en orden de creación, o None.
@@ -85,19 +85,21 @@ class Lote:
         return None
 
     def pendientes_en_orden(self):
-        """Genera las muestras PENDIENTE en orden de creación, sin tocar la cola."""
-        for m in self._pendientes:      
-            if m.estado == EstadoMuestra.PENDIENTE:
-                yield m
+        """Retorna las muestras PENDIENTE en orden de creación, sin tocar la cola."""
+        return tuple(
+            filter(lambda m: m.estado == EstadoMuestra.PENDIENTE, self._pendientes)
+        )
 
-  # --- Decisión del lote ---
+    # --- Decisión del lote ---
 
     def decidir(self):
-        """Decide el estado del lote basado en el porcentaje de muestras no conformes.
-        RECHAZADO si > 5%, APROBADO si <= 5%. La decisión es final."""
+        """Decide el estado del lote basado en el porcentaje de muestras
+        no conformes. RECHAZADO si > 5%, APROBADO si <= 5%.
+        La decisión es final."""
         if self._estado != EstadoLote.EN_PRODUCCION:
             raise TransicionIlegalError(
-                f"El lote '{self._id}' ya está decidido ({self._estado.value})."
+                f"El lote '{self._id}' ya está decidido "
+                f"({self._estado.value})."
             )
 
         if not self._muestras:
@@ -114,46 +116,69 @@ class Lote:
             self._estado = EstadoLote.RECHAZADO
         else:
             self._estado = EstadoLote.APROBADO
+
         return self._estado
 
-# --- Consultas (sin efectos secundarios) ---
+    # --- Consultas (sin efectos secundarios) ---
+
+    def _muestras_cerradas(self):
+        """Filtra las muestras que se encuentran en un estado final."""
+        return filter(
+            lambda m: m.estado in Lote.ESTADOS_FINALES,
+            self._muestras.values()
+        )
 
     def porcentaje_no_conforme(self):
         """Calcula el porcentaje de muestras no conformes sin redondear."""
         total_muestras = len(self._muestras)
+
         if total_muestras == 0:
             return 0
-        no_conforme_count = sum(
-            map(lambda m: 1 if m.estado == EstadoMuestra.NO_CONFORME else 0,
-                self._muestras.values())
+
+        # Seleccionamos únicamente las muestras no conformes.
+        no_conformes = filter(
+            lambda m: m.estado == EstadoMuestra.NO_CONFORME,
+            self._muestras.values()
         )
-        return no_conforme_count / total_muestras * 100
+
+        # Contamos las muestras filtradas.
+        cantidad_no_conformes = len(list(no_conformes))
+
+        return cantidad_no_conformes / total_muestras * 100
 
     def todas_cerradas(self):
         """Verifica si todas las muestras están en un estado final."""
-        estados_finales = (EstadoMuestra.CONFORME, EstadoMuestra.NO_CONFORME)
-        return all(map(lambda m: m.estado in estados_finales, self._muestras.values()))
-
-    def _muestras_cerradas(self):
-        """Genera las muestras en estado final, de a una."""
-        for m in self._muestras.values():
-            if m.estado in (EstadoMuestra.CONFORME, EstadoMuestra.NO_CONFORME):
-                yield m
-
-    def _defectos_cerrados(self):
-        """Genera los defectos de todas las muestras cerradas."""
-        for m in self._muestras_cerradas():
-            yield from m.defectos
+        return all(
+            map(
+                lambda m: m.estado in Lote.ESTADOS_FINALES,
+                self._muestras.values()
+            )
+        )
 
     def total_defectos_criticos(self):
-        """Cuenta el total de defectos críticos en muestras cerradas."""
-        return sum(1 for d in self._defectos_cerrados() if d.es_critico())
+        """Cuenta el total de defectos críticos de las muestras cerradas."""
+
+        # Primero se filtran las muestras cerradas.
+        # Luego cada muestra se transforma en su cantidad de defectos críticos
+        # (filtrando sus defectos con gravedad 5).
+        # Finalmente se suman esas cantidades.
+        return sum(
+            map(
+                lambda m: len(list(filter(lambda d: d.es_critico(), m.defectos))),
+                self._muestras_cerradas()
+            )
+        )
 
     def conteo_por_tipo(self):
-        """Retorna un dict {tipo: cantidad} de defectos en muestras cerradas."""
+        """Retorna un dict {tipo: cantidad} con los defectos
+        encontrados en muestras cerradas."""
         conteo = {}
-        for d in self._defectos_cerrados():
-            conteo[d.tipo] = conteo.get(d.tipo, 0) + 1
+
+        # Se recorren únicamente las muestras cerradas.
+        for muestra in self._muestras_cerradas():
+            for defecto in muestra.defectos:
+                conteo[defecto.tipo] = conteo.get(defecto.tipo, 0) + 1
+
         return conteo
 
     def __repr__(self):

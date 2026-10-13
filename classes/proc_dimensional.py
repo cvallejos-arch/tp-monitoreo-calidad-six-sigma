@@ -14,21 +14,22 @@ class ProcedimientoDimensional(Procedimiento):
         return self._unidad_medida
 
     def evaluar(self, observaciones):
-        """Evalúa cada observación dimensional. Si la desviación es mayor
-        que la tolerancia, genera un defecto con gravedad calculada."""
-        defectos = []
-        for obs in observaciones:
-            if obs.desviacion > 0:
-                gravedad = self._calcular_gravedad(obs)
-                defectos.append(
-                    Defecto(
-                        tipo="DIMENSIONAL",
-                        descripcion=f"Desviación dimensional: medido={obs.valor_medido}, "
-                                    f"rango=[{obs.tolerancia_min}, {obs.tolerancia_max}]",
-                        gravedad=gravedad
-                    )
-                )
-        return defectos
+        """Evalúa cada observación dimensional. Si el valor medido queda fuera
+        del rango [tolerancia_min, tolerancia_max], genera un defecto con
+        gravedad calculada."""
+        # Primero se filtran las observaciones fuera de tolerancia (desviación > 0).
+        # Luego cada observación filtrada se transforma en un Defecto DIMENSIONAL.
+        return list(
+            map(
+                lambda obs: Defecto(
+                    tipo="DIMENSIONAL",
+                    descripcion=f"Desviación dimensional: medido={obs.valor_medido}, "
+                                f"rango=[{obs.tolerancia_min}, {obs.tolerancia_max}]",
+                    gravedad=self._calcular_gravedad(obs)
+                ),
+                filter(lambda obs: obs.desviacion > 0, observaciones)
+            )
+        )
 
     def _calcular_gravedad(self, obs):
         """Calcula la gravedad basada en el exceso de desviación sobre la tolerancia."""
