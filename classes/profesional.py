@@ -54,13 +54,16 @@ class Profesional:
         )
 
     def __repr__(self):
+        # Se recorre el dict con .items(): cada par es (nombre, certificacion).
         certificaciones = ", ".join(
-            f"{nombre}: {cert}"
-            for nombre, cert in self._certificaciones.items()
+            map(
+                lambda par: f"{par[0]}: {par[1]}",
+                self._certificaciones.items()
+            )
         )
 
         return (
             f"Profesional(id={self._id}, "
             f"nombre='{self._nombre}', "
-            f"certificaciones={{ {certificaciones} }})"
+            f"certificaciones={{{certificaciones}}})"
         )
