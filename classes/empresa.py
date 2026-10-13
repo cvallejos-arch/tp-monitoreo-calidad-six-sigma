@@ -1,13 +1,22 @@
 from classes.lote import Lote
-from classes.procedimiento import Procedimiento
+from classes.muestra import Muestra
 from classes.inspeccion import Inspeccion
 from classes.profesional import Profesional
 from classes.equipo import Equipo
-from classes.muestra import Muestra
-from classes.excepciones import EstructuraVaciaError
+from classes.procedimiento import Procedimiento
+from classes.excepciones import EstructuraVaciaError, DatosInvalidosError
 
 class Empresa:
-
+    # Clase de los objetos guardados en cada categoría del registro
+    # (se usa para validar los atributos de los filtros).
+    CLASES_POR_CATEGORIA = {
+        "lotes": Lote,
+        "muestras": Muestra,
+        "profesionales": Profesional,
+        "equipos": Equipo,
+        "procedimientos": Procedimiento,
+        "inspecciones": Inspeccion,
+    }
 
     def __init__(self):
         self._registros = {
@@ -80,23 +89,48 @@ class Empresa:
         """Accede al registro de muestras por id (dict access)."""
         return self._registros["muestras"].get(muestra_id)
 
+    def _filtrar(self, categoria, **filtros):
+        """Retorna los objetos de una categoría del registro que cumplen TODOS los
+        filtros {atributo: valor}. Sin filtros, retorna todos.
+        Lanza DatosInvalidosError si algún atributo no existe en esa clase."""
+        clase = Empresa.CLASES_POR_CATEGORIA[categoria]
+
+        # Se recorren los filtros (dict) para validar que cada atributo exista.
+        for attr in filtros.keys():
+            if not hasattr(clase, attr):
+                raise DatosInvalidosError(
+                    f"'{clase.__name__}' no tiene el atributo '{attr}' para filtrar.",
+                    categoria=categoria,
+                    atributo=attr
+                )
+
+        # Un objeto pasa el filtro si coincide en todos los pares (atributo, valor).
+        return list(
+            filter(
+                lambda obj: all(
+                    map(lambda par: getattr(obj, par[0]) == par[1], filtros.items())
+                ),
+                self._registros[categoria].values()
+            )
+        )
+
     def listar_lotes(self, **filtros):
         """Retorna los lotes registrados, opcionalmente filtrados por atributos (kwargs)."""
-        lotes = self._registros["lotes"].values()
-        for attr, val in filtros.items():
-            lotes = [l for l in lotes if getattr(l, attr, None) == val]
-        return list(lotes)
-
-    def listar_inspecciones(self, **filtros):
-        """Retorna las inspecciones registradas, opcionalmente filtradas por atributos (kwargs)."""
-        inspecciones = self._registros["inspecciones"].values()
-        for attr, val in filtros.items():
-            inspecciones = [i for i in inspecciones if getattr(i, attr, None) == val]
-        return list(inspecciones)
+        return self._filtrar("lotes", **filtros)
 
     def listar_muestras(self, **filtros):
         """Retorna las muestras registradas, opcionalmente filtradas por atributos (kwargs)."""
-        muestras = self._registros["muestras"].values()
-        for attr, val in filtros.items():
-            muestras = [m for m in muestras if getattr(m, attr, None) == val]
-        return list(muestras)
+        return self._filtrar("muestras", **filtros)
+
+    def listar_inspecciones(self, **filtros):
+        """Retorna las inspecciones registradas, opcionalmente filtradas por atributos (kwargs)."""
+        return self._filtrar("inspecciones", **filtros)
+
+    def resumen(self):
+        """Retorna un dict {categoria: cantidad registrada}, recorriendo el registro."""
+        return dict(
+            map(
+                lambda par: (par[0], len(par[1])),
+                self._registros.items()
+            )
+        )
