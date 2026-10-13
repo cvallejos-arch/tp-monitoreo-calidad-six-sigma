@@ -1,4 +1,6 @@
-
+"""Simulación completa (end-to-end) del sistema de monitoreo de calidad:
+registra un lote con sus muestras, valida requisitos, ejecuta inspecciones
+visuales y dimensionales, decide el lote y muestra reportes y consultas."""
 
 from datetime import date, timedelta
 
@@ -12,6 +14,8 @@ from classes.excepciones import (
     TransicionIlegalError,
     CertificacionNoVigenteError,
     EquipoNoAptoError,
+    DatosInvalidosError,
+    EstructuraVaciaError,
 )
 from classes.estado_lote import EstadoLote
 from classes.estado_muestra import EstadoMuestra
@@ -23,12 +27,17 @@ def separador(titulo):
     print(f"{'='*60}\n")
 
 
+def texto_historial(historial):
+    """Convierte una secuencia de estados en texto: PENDIENTE -> EN_INSPECCION -> ..."""
+    return " -> ".join(map(lambda estado: estado.value, historial))
+
+
 def main():
     empresa = Empresa()
     fecha_hoy = date(2025, 6, 15)
 
     # ============================================================
-    #  1. REGISTRAR LOTE Y MUESTRAS
+    #  1. REGISTRAR LOTE Y MUESTRAS (COLA DE PENDIENTES)
     # ============================================================
     separador("1. REGISTRAR LOTE Y MUESTRAS")
 
@@ -38,10 +47,15 @@ def main():
     # Crear 20 muestras de 50 unidades cada una (composicion: el lote crea sus muestras)
     muestras = []
     for i in range(20):
-        m = empresa.crear_registrar_muestra(50, lote)
-        muestras.append(m)
+        muestras.append(empresa.crear_registrar_muestra(50, lote))
     print(f"Se crearon {len(muestras)} muestras en el lote")
-    print(f"Capacidad usada: {sum(m.cantidad for m in muestras)}/{lote.cantidad_fabricada}")
+
+    capacidad_usada = sum(map(lambda m: m.cantidad, muestras))
+    print(f"Capacidad usada: {capacidad_usada}/{lote.cantidad_fabricada}")
+
+    # El lote encola cada muestra al crearla (Cola: primero en entrar, primero en salir)
+    print(f"Muestras pendientes en la cola: {len(lote.pendientes_en_orden())}")
+    print(f"Siguiente a inspeccionar (frente de la cola): {lote.siguiente_muestra_pendiente().id}")
 
     # ============================================================
     #  2. REGISTRAR PROFESIONALES CON CERTIFICACIONES
@@ -49,9 +63,13 @@ def main():
     separador("2. REGISTRAR PROFESIONALES CON CERTIFICACIONES")
 
     prof_ana = empresa.crear_registrar_profesional("Ana")
-    cert_iso = Certificacion("ISO", date(2025, 1, 1), date(2025, 12, 31))
-    prof_ana.agregar_certificacion(cert_iso)
+    prof_ana.agregar_certificacion(Certificacion("ISO", date(2025, 1, 1), date(2025, 12, 31)))
+    prof_ana.agregar_certificacion(Certificacion("Seguridad", date(2023, 1, 1), date(2023, 12, 31)))
     print(f"Profesional: {prof_ana}")
+
+    vigentes = prof_ana.certificaciones_vigentes(fecha_hoy)
+    nombres_vigentes = ", ".join(map(lambda c: c.nombre, vigentes))
+    print(f"  Certificaciones vigentes al {fecha_hoy}: {nombres_vigentes}")
 
     prof_carlos = empresa.crear_registrar_profesional("Carlos")
     # Carlos NO tiene certificación ISO
@@ -65,20 +83,21 @@ def main():
     equipo_visual = empresa.crear_registrar_equipo(
         "Visual", fecha_hoy - timedelta(days=100)
     )
-    print(f"Equipo visual: {equipo_visual}")
-    print(f"  Calibrado a fecha {fecha_hoy}? {equipo_visual.esta_calibrado(fecha_hoy)}")
-
     equipo_dimensional = empresa.crear_registrar_equipo(
         "Dimensional", fecha_hoy - timedelta(days=180)
     )
-    print(f"Equipo dimensional: {equipo_dimensional}")
-    print(f"  Calibrado a fecha {fecha_hoy}? {equipo_dimensional.esta_calibrado(fecha_hoy)}")
-
     equipo_vencido = empresa.crear_registrar_equipo(
         "Visual", fecha_hoy - timedelta(days=200)
     )
-    print(f"Equipo vencido: {equipo_vencido}")
-    print(f"  Calibrado a fecha {fecha_hoy}? {equipo_vencido.esta_calibrado(fecha_hoy)}")
+
+    equipos = {
+        "Equipo visual": equipo_visual,
+        "Equipo dimensional": equipo_dimensional,
+        "Equipo vencido": equipo_vencido,
+    }
+    for nombre, equipo in equipos.items():
+        print(f"{nombre}: {equipo}")
+        print(f"  Calibrado a fecha {fecha_hoy}? {equipo.esta_calibrado(fecha_hoy)}")
 
     # ============================================================
     #  4. CREAR PROCEDIMIENTOS (POLIMORFISMO)
@@ -138,13 +157,13 @@ def main():
         print(f"       Detalles del error: {e.detalles}")
 
     # ============================================================
-    #  6. EJECUTAR INSPECCIONES VISUALES (POLIMORFISMO)
+    #  6. EJECUTAR INSPECCIONES VISUALES (POLIMORFISMO + COLA)
     # ============================================================
     separador("6. EJECUTAR INSPECCIONES VISUALES")
 
-    # Muestra 0: no conforme (defecto crítico)
-    insp_0 = empresa.lanzar_inspeccion(
-        muestras[0], prof_ana, equipo_visual, proc_visual, fecha_hoy
+    # Muestra 0: no conforme (defecto crítico). Se toma del frente de la cola.
+    insp_0 = empresa.lanzar_siguiente_inspeccion(
+        lote, prof_ana, equipo_visual, proc_visual, fecha_hoy
     )
     obs_visual_0 = [
         ObservacionVisual("Fractura completa en pieza", True, 5),
@@ -156,28 +175,28 @@ def main():
         print(f"  - {d}")
     insp_0.cerrar()
     print(f"Estado muestra 0: {muestras[0].estado.value}")
+    print(f"Historial de estados (pila): {texto_historial(muestras[0].historial_estados)}")
     print(f"Reporte: {muestras[0].reporte}")
 
-    # Muestras 1 a 18: conformes (sin defectos o leves)
+    # Muestras 1 a 18: conformes. La cola entrega las pendientes en orden de creación.
     for i in range(1, 19):
-        equipo_i = empresa.crear_registrar_equipo("Visual", fecha_hoy - timedelta(days=50))
-        insp = empresa.lanzar_inspeccion(
-            muestras[i], prof_ana, equipo_i, proc_visual, fecha_hoy
+        insp = empresa.lanzar_siguiente_inspeccion(
+            lote, prof_ana, equipo_visual, proc_visual, fecha_hoy
         )
-        obs = [ObservacionVisual("Sin defectos observados", False)]
-        insp.ejecutar(obs)
+        insp.ejecutar([ObservacionVisual("Sin defectos observados", False)])
         insp.cerrar()
 
-    print(f"\nMuestras 1-18 inspeccionadas y conformes")
+    print("\nMuestras 1-18 inspeccionadas en orden de la cola y conformes")
+    print(f"Muestras pendientes en la cola: {len(lote.pendientes_en_orden())}")
 
     # ============================================================
     #  7. EJECUTAR INSPECCIÓN DIMENSIONAL (POLIMORFISMO)
     # ============================================================
     separador("7. EJECUTAR INSPECCIÓN DIMENSIONAL")
 
-    # Muestra 19: inspección dimensional
-    insp_19 = empresa.lanzar_inspeccion(
-        muestras[19], prof_ana, equipo_dimensional, proc_dimensional, fecha_hoy
+    # Muestra 19: la última que queda en la cola de pendientes
+    insp_19 = empresa.lanzar_siguiente_inspeccion(
+        lote, prof_ana, equipo_dimensional, proc_dimensional, fecha_hoy
     )
     obs_dim = [
         ObservacionDimensional(10.5, 9.0, 10.0, "Pieza fuera de tolerancia superior"),
@@ -191,6 +210,14 @@ def main():
     insp_19.cerrar()
     print(f"Estado muestra 19: {muestras[19].estado.value}")
 
+    print("\nIntentando inspeccionar con la cola de pendientes vacía...")
+    try:
+        empresa.lanzar_siguiente_inspeccion(
+            lote, prof_ana, equipo_visual, proc_visual, fecha_hoy
+        )
+    except EstructuraVaciaError as e:
+        print(f"   [X] RECHAZADO: {e}")
+
     # ============================================================
     #  8. CONSULTAS DEL LOTE (SIN EFECTOS SECUNDARIOS)
     # ============================================================
@@ -199,7 +226,9 @@ def main():
     print(f"Todas cerradas: {lote.todas_cerradas()}")
     print(f"Porcentaje no conforme: {lote.porcentaje_no_conforme()}%")
     print(f"Total defectos críticos: {lote.total_defectos_criticos()}")
-    print(f"Conteo por tipo: {lote.conteo_por_tipo()}")
+    print("Conteo por tipo:")
+    for tipo, cantidad in lote.conteo_por_tipo().items():
+        print(f"  - {tipo}: {cantidad}")
 
     # ============================================================
     #  9. DECIDIR EL LOTE
@@ -208,7 +237,9 @@ def main():
 
     estado_final = lote.decidir()
     print(f"Decisión del lote: {estado_final.value}")
-    print(f"  Muestras no conformes: {sum(1 for m in muestras if m.estado.value == 'NO_CONFORME')}/20")
+
+    no_conformes = list(filter(lambda m: m.estado == EstadoMuestra.NO_CONFORME, muestras))
+    print(f"  Muestras no conformes: {len(no_conformes)}/{len(muestras)}")
 
     # Intentar decidir de nuevo
     print("\nIntentando decidir el lote de nuevo...")
@@ -223,25 +254,35 @@ def main():
     separador("10. RESUMEN FINAL")
 
     print(f"Lote: {lote}")
-    print(f"\nReportes de desviación generados:")
-    for m in muestras:
-        if m.reporte is not None:
-            r = m.reporte
-            print(f"  - Reporte {r.id}:")
-            print(f"    Muestra: {r.muestra_id}")
-            print(f"    Profesional: {r.profesional_id}")
-            print(f"    Fecha: {r.fecha}")
-            print(f"    Defectos ({len(r.defectos)}):")
-            for d in r.defectos:
-                print(f"      - {d}")
+    print("\nReportes de desviación generados:")
+    reportes = map(lambda m: m.reporte, filter(lambda m: m.reporte is not None, muestras))
+    for r in reportes:
+        print(f"  - Reporte {r.id}:")
+        print(f"    Muestra: {r.muestra_id}")
+        print(f"    Profesional: {r.profesional_id}")
+        print(f"    Fecha: {r.fecha}")
+        print(f"    Historial: {texto_historial(r.historial_estados)}")
+        print(f"    Defectos ({len(r.defectos)}):")
+        for d in r.defectos:
+            print(f"      - {d}")
 
-    print(f"\nConsultas dinámicas en Empresa con **kwargs (filtros):")
+    print("\nConsultas dinámicas en Empresa con **kwargs (filtros):")
     lotes_aprobados = empresa.listar_lotes(estado=EstadoLote.APROBADO)
     print(f"  - Lotes con estado APROBADO: {len(lotes_aprobados)}")
     muestras_no_conf = empresa.listar_muestras(estado=EstadoMuestra.NO_CONFORME)
     print(f"  - Muestras con estado NO_CONFORME: {len(muestras_no_conf)}")
     inspecciones_cerradas = empresa.listar_inspecciones(cerrada=True)
     print(f"  - Inspecciones cerradas: {len(inspecciones_cerradas)}")
+
+    print("\nIntentando filtrar por un atributo inexistente...")
+    try:
+        empresa.listar_lotes(estdo=EstadoLote.APROBADO)
+    except DatosInvalidosError as e:
+        print(f"   [X] RECHAZADO: {e}")
+
+    print("\nResumen del registro de la empresa:")
+    for categoria, cantidad in empresa.resumen().items():
+        print(f"  - {categoria}: {cantidad}")
 
     print(f"\n{'='*60}")
     print("  [OK] EJECUCION COMPLETA - TODAS LAS FUNCIONALIDADES DEMOSTRADAS")
