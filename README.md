@@ -11,16 +11,21 @@ Trabajo práctico de **Estructuras de Datos y Programación (ITBA)**. La consign
 Desde la carpeta del proyecto:
 
 ```bash
-py main.py            # simulación completa por consola
-py -m pytest -q       # 330 tests
+py menu.py            # interfaz gráfica (ventana con pestañas)
+py consola.py         # el mismo uso interactivo, por consola con input()
+py main.py            # demo guionada: recorre todo el sistema y provoca cada error
+py -m pytest -q       # 387 tests
 ```
 
-`main.py` recorre el flujo completo y además provoca a propósito cada error del sistema, para mostrar dónde y por qué se rechaza cada operación:
+**Para probar rápido:** en `menu.py` (botón **Datos de ejemplo**) o en `consola.py` (opción **12**) se carga un lote de 200 tornillos con 20 muestras, a Ana (con la certificación ISO vigente), a Carlos (sin certificaciones), un equipo visual, uno dimensional y uno **vencido**, y los dos procedimientos. Desde ahí se pueden provocar los errores en vivo: inspeccionar con Carlos, usar el equipo vencido o decidir el lote con muestras pendientes.
 
-- **Lote 1 (Tornillos):** 1000 unidades con 20 muestras. Se inspeccionan en el orden de la cola y el lote sale **APROBADO** con exactamente 5 % no conforme (la regla rechaza solo si se supera el 5 %).
-- **Lote 2 (Arandelas):** 4 muestras que muestran las reglas de cierre: suma de gravedades igual al límite → `CONFORME`; suma mayor al límite → `NO_CONFORME`; un defecto crítico → `NO_CONFORME`; sin defectos → `CONFORME`. Con 50 % no conforme, el lote sale **RECHAZADO**.
+**Qué muestra `main.py`:**
+- **Lote 1 (Tornillos):** 1000 unidades con 20 muestras, inspeccionadas en el orden de la cola. Sale **APROBADO** con exactamente 5 % no conforme (la regla rechaza solo si se supera el 5 %).
+- **Lote 2 (Arandelas):** 4 muestras que muestran las reglas de cierre: suma igual al límite → `CONFORME`; suma mayor al límite → `NO_CONFORME`; un defecto crítico → `NO_CONFORME`; sin defectos → `CONFORME`. Con 50 % no conforme, sale **RECHAZADO**.
+- **Serialización:** exporta los reportes a `reportes.json`, guarda la empresa en `empresa.pkl` y vuelve a cargar los dos.
+- **Simulación aleatoria (sección 14):** lotes de 20 muestras con observaciones al azar. La **semilla 5** da 5 % → **APROBADO**; la **semilla 1** da 10 % → **RECHAZADO**. Repetir una semilla repite exactamente el mismo resultado.
 
-**Casos de error que se demuestran:**
+**Casos de error que demuestra `main.py`:**
 
 | Caso | Qué se intenta | Excepción |
 |---|---|---|
@@ -40,12 +45,53 @@ py -m pytest -q       # 330 tests
 | 7 | Pedir la siguiente inspección con la cola vacía | `EstructuraVaciaError` |
 | 9 | Decidir de nuevo un lote ya decidido | `TransicionIlegalError` |
 | 11 | Filtrar por un atributo que no existe | `DatosInvalidosError` |
+| 14a | Simular un lote con un profesional sin certificación | `CertificacionNoVigenteError` |
 
-En todos los rechazos de la sección 5, la muestra queda en `PENDIENTE`: las validaciones se hacen en el constructor de `Inspeccion` antes de cambiar el estado.
+En todos los rechazos de inspección, la muestra queda en `PENDIENTE`: las validaciones se hacen en el constructor de `Inspeccion` antes de cambiar el estado.
 
 ---
 
-## 2. Flujo de una inspección
+## 2. Estructura del repositorio
+
+| Archivo / carpeta | Qué contiene |
+|---|---|
+| `classes/` | **El dominio:** todas las clases del sistema y sus reglas. No usa `input`, `print` ni azar. |
+| `classes/simulador.py` | Generador de observaciones al azar con semilla (lo usan las tres interfaces). |
+| `menu.py` | Interfaz gráfica (tkinter). |
+| `consola.py` | Interfaz por consola (`input()`). |
+| `main.py` | Demo guionada por consola. |
+| `tests/` | Tests con pytest: uno o más archivos por clase, más los de las reglas de la consigna, la serialización, el simulador y la consola. |
+
+Las tres interfaces están **separadas del dominio**, como pide la consigna: solo llaman a métodos públicos de las clases (nunca a atributos privados como `empresa._registros`), y las reglas se validan siempre dentro del dominio.
+
+---
+
+## 3. Interfaces
+
+**`menu.py`: interfaz gráfica (4 pestañas)**
+- **Encabezado:** botones *Cargar empresa* y *Guardar empresa* (pickle) y *Datos de ejemplo*.
+- **Registro:** crear lotes y muestras, registrar profesionales con sus certificaciones, equipos y procedimientos (visual o dimensional).
+- **Inspección:**
+  - elegir el lote, la muestra (o *Tomar la siguiente de la cola*), el profesional, el equipo, el procedimiento y la fecha;
+  - cargar las observaciones según el tipo de procedimiento, a mano o con *Observaciones al azar* (con semilla opcional);
+  - *Inspeccionar muestra* muestra el resultado (estado, suma de gravedades, defecto crítico, reporte);
+  - *Simulación aleatoria del lote* inspecciona todas las pendientes con una semilla y una probabilidad de defecto.
+- **Lotes y muestras:** una tabla de lotes (estado, pendientes, % no conforme, críticos), las muestras del lote elegido con su **historial (pila)**, y *Decidir lote seleccionado*.
+- **Reportes:** la lista de reportes de desviación con su detalle, y *Exportar a JSON*.
+- **Errores:** pasan todos por `_ejecutar`, que captura `CalidadError` y `OSError` y los muestra en una ventana con el nombre de la excepción. El programa sigue funcionando.
+- **Controles antes de llamar al dominio:** no deja crear muestras que no entran en el lote (así nunca quedan creadas solo algunas), y no deja inspeccionar sin observaciones.
+
+**`consola.py`: menú por consola (13 opciones)**
+- **Las mismas acciones** que la interfaz gráfica: registro, inspección (a mano o al azar), ver y decidir lotes, reportes, pickle/JSON, datos de ejemplo y simulación aleatoria.
+- **Entrada de datos:** las funciones `pedir_texto`, `pedir_entero`, `pedir_decimal`, `pedir_fecha`, `pedir_si_no` y `elegir_de_lista` **vuelven a preguntar** hasta que el dato sea válido.
+- **Orden de la inspección:** las observaciones se piden **antes** de lanzarla, para que una muestra nunca quede a medias en `EN_INSPECCION`.
+- **Errores:** un único `except CalidadError` en `ejecutar_opcion` muestra cualquier error del sistema y vuelve al menú. También se capturan `OSError` (archivos) y `Ctrl+C`.
+
+**`main.py`: demo guionada** (sección 1). Corre sola, sin pedir datos, y siempre da el mismo resultado.
+
+---
+
+## 4. Flujo de una inspección
 
 1. **Registro:** `Empresa` crea el lote, y el lote crea sus muestras y las pone en una **cola** de pendientes. También se registran profesionales con sus certificaciones, equipos con su fecha de calibración y procedimientos.
 2. **Validación previa:** al crear una `Inspeccion` se controla que la muestra esté `PENDIENTE`, que el profesional tenga la certificación vigente, y que el equipo sea compatible y esté calibrado. Si algo falla, se lanza una excepción y la muestra no cambia.
@@ -55,7 +101,7 @@ En todos los rechazos de la sección 5, la muestra queda en `PENDIENTE`: las val
 
 ---
 
-## 3. Clases y relaciones (en orden de importancia)
+## 5. Clases y relaciones (en orden de importancia)
 
 **Muestra** (`muestra.py`): un subconjunto del lote. Es la única clase que cambia su propio estado.
 - **Atributos:** `id`, `cantidad`, `lote_id`, `estado` (el tope de la pila), `historial_estados`, `defectos` (tupla), `reporte`.
@@ -79,16 +125,17 @@ En todos los rechazos de la sección 5, la muestra queda en `PENDIENTE`: las val
 **Procedimiento** (`procedimiento.py`): clase **abstracta** (`ABC`) que define el contrato de toda inspección.
 - **Atributos:** `limite_gravedad_acumulada`, `categoria_equipo_requerida`, `certificacion_requerida` y `CLASE_DEFECTO`.
 - **Método abstracto:** `evaluar(observaciones)`.
-- **ProcedimientoVisual** (`proc_visual.py`): hereda de `Procedimiento`. Recibe `ObservacionVisual` y produce `DefectoVisual`.
-- **ProcedimientoDimensional** (`proc_dimensional.py`): hereda de `Procedimiento`. Recibe `ObservacionDimensional`, calcula la gravedad según cuánto se pasa la medida de la tolerancia (`_calcular_gravedad`) y produce `DefectoDimensional`.
+- **ProcedimientoVisual** (`proc_visual.py`): hereda de `Procedimiento`. Recibe `ObservacionVisual` y produce `DefectoVisual`. Si no se indica la categoría de equipo, usa `"Visual"`.
+- **ProcedimientoDimensional** (`proc_dimensional.py`): hereda de `Procedimiento` y agrega `unidad_medida` (por `**kwargs`). Recibe `ObservacionDimensional`, calcula la gravedad según cuánto se pasa la medida de la tolerancia (`_calcular_gravedad`) y produce `DefectoDimensional`.
 
 **Defecto** (`defecto.py`): una desviación observada. Es inmutable: tiene getters y no tiene setters.
-- **Atributos:** `tipo`, `descripcion` y `gravedad` (de 1 a 5). Métodos: `es_critico()` y `copia()`.
+- **Atributos:** `tipo`, `descripcion` y `gravedad` (de 1 a 5). Métodos: `es_critico()`, `copia()`, `to_dict()` y `from_dict(data)` (JSON).
 - **DefectoVisual:** hereda de `Defecto` con el tipo fijo en `"VISUAL"`.
 - **DefectoDimensional:** hereda de `Defecto` y además guarda `valor_medido`, `tolerancia_min`, `tolerancia_max` y `unidad`. Si el valor medido está dentro del rango, lanza error, porque no sería un defecto.
 
 **Reporte** (`reporte.py`): el respaldo de una muestra no conforme.
 - **Atributos:** `muestra_id`, `lote_id`, `profesional_id`, `fecha`, `defectos` (tupla de copias) e `historial_estados`.
+- **Métodos:** `to_dict()` y `from_dict(data)` para JSON.
 - Lo crea la **Muestra** al cerrarse como no conforme. No se puede modificar.
 
 **Profesional** (`profesional.py`): quien ejecuta la inspección.
@@ -107,11 +154,24 @@ En todos los rechazos de la sección 5, la muestra queda en `PENDIENTE`: las val
 
 **Empresa** (`empresa.py`): el punto de entrada del dominio. Guarda todo en un registro de diccionarios por categoría.
 - **Registro y lanzamiento:**
-  - `crear_registrar_*()` para cada entidad;
-  - `crear_registrar_procedimiento(tipo, **kwargs)`;
-  - `lanzar_inspeccion()`;
-  - `lanzar_siguiente_inspeccion(lote, ...)`, que toma la muestra del frente de la cola del lote.
-- **Consultas:** `listar_lotes()`, `listar_muestras()` y `listar_inspecciones()` aceptan filtros `**kwargs`. `resumen()` da la cantidad de cada categoría.
+  - `crear_registrar_*()` para cada entidad, y `crear_registrar_procedimiento(tipo, **kwargs)`;
+  - `lanzar_inspeccion()`, y `lanzar_siguiente_inspeccion(lote, ...)`, que toma la muestra del frente de la cola del lote.
+- **Consultas:**
+  - `listar_lotes()`, `listar_muestras()`, `listar_inspecciones()`, `listar_profesionales()`, `listar_equipos()` y `listar_procedimientos()`. Todas aceptan filtros `**kwargs` (por ejemplo `listar_equipos(categoria="Visual")`) y usan el mismo `_filtrar`;
+  - `obtener_lote(id)` y `obtener_muestra(id)`;
+  - `reportes()`, que devuelve los reportes de las muestras no conformes;
+  - `resumen()`, que da la cantidad de cada categoría.
+- **Serialización:**
+  - `exportar_reportes_json(ruta)` y `cargar_reportes_json(ruta)` (JSON);
+  - `guardar(ruta)` y `cargar(ruta)` (pickle).
+
+**Simulador** (`simulador.py`): genera casos al azar. No es parte del dominio.
+- **Generador propio:** usa `random.Random(semilla)`. Con la misma semilla, siempre el mismo caso, y no altera el `random` global.
+- **Métodos:**
+  - `observaciones_visuales(cantidad, prob_defecto)`, con `random()`, `randint(1, 5)` y `choice()`;
+  - `observaciones_dimensionales(cantidad, tol_min, tol_max, dispersion)`, con `uniform()`;
+  - `observaciones_para(procedimiento, ...)`, que elige el tipo según el procedimiento;
+  - `simular_lote(empresa, lote, ...)`, que inspecciona todas las pendientes. Las validaciones del dominio se aplican igual que en una inspección manual.
 
 **Estructuras de datos propias:**
 - **Nodo** (`nodo.py`): guarda un `dato` y la referencia `siguiente`.
@@ -125,7 +185,7 @@ En todos los rechazos de la sección 5, la muestra queda en `PENDIENTE`: las val
 
 ---
 
-## 4. Reglas de negocio: dónde se cumplen
+## 6. Reglas de negocio: dónde se cumplen
 
 | # | Regla | Dónde | Tests |
 |---|---|---|---|
@@ -144,7 +204,7 @@ En todos los rechazos de la sección 5, la muestra queda en `PENDIENTE`: las val
 
 ---
 
-## 5. Decisiones de diseño
+## 7. Decisiones de diseño
 
 - **¿Cómo reciben los procedimientos observaciones distintas sin exponer la muestra?** Cada procedimiento recibe sus propios objetos de observación (`ObservacionVisual` u `ObservacionDimensional`) y devuelve una lista de defectos. Nunca toca la muestra: es la `Inspeccion` la que agrega los defectos.
 - **¿Quién valida todo antes de iniciar?** El constructor de `Inspeccion`. Si una validación falla, se lanza la excepción **antes** de cambiar el estado, así que la muestra queda intacta.
@@ -152,34 +212,50 @@ En todos los rechazos de la sección 5, la muestra queda en `PENDIENTE`: las val
 - **¿La conformidad se guarda o se calcula?** Se calcula a partir de los defectos en el momento del cierre y se guarda como estado final. No hay contradicción posible, porque después del cierre no se pueden agregar defectos.
 - **¿Cómo se copia el reporte de forma estable?** `Reporte` guarda una tupla con `copia()` de cada defecto. Cada subclase redefine `copia()` para conservar sus datos propios.
 - **¿Dónde se decide el lote?** En `Lote.decidir()`, que solo mira el estado de las muestras. No sabe qué procedimiento usó cada una, así que agregar un procedimiento nuevo no afecta la decisión.
+- **¿Dónde va el azar?** Solo en `Simulador`, nunca en el dominio. Las reglas dan siempre el mismo resultado con los mismos datos, y los tests usan semillas fijas, así que nunca fallan por azar.
 
 ---
 
-## 6. Conceptos de la materia aplicados
+## 8. Extensiones (fuera de lo que pide la consigna)
+
+La consigna deja **fuera de alcance la interfaz gráfica y la persistencia**. Las sumamos como extensiones para aplicar temas de la materia, sin cambiar ninguna regla de negocio:
+
+- **Serialización:**
+  - **JSON** exporta los reportes de desviación en un archivo legible, que no depende de Python: es el respaldo "oficial" del rechazo. Se guarda con `to_dict()` + `json.dump` y se carga con `json.load` + `Clase(**data)`.
+  - **pickle** guarda la empresa completa (lotes, muestras con su pila, colas, inspecciones y reportes, con sus relaciones) para retomar el trabajo donde quedó.
+- **Interfaces interactivas:** `menu.py` (ventana) y `consola.py` (`input()`).
+- **Simulación aleatoria con semilla:** genera casos distintos para probar el sistema y permite repetir cualquiera de ellos.
+
+---
+
+## 9. Conceptos de la materia aplicados
 
 | Concepto | Dónde se aplica |
 |---|---|
-| **POO y encapsulamiento** | Atributos privados (`_x`) con `@property`; ningún estado se cambia directamente desde afuera |
+| **POO y encapsulamiento** | Atributos privados (`_x`) con `@property`; ningún estado se cambia directamente desde afuera; las interfaces usan solo métodos públicos |
 | **Herencia y polimorfismo** | `Procedimiento` → `ProcedimientoVisual` / `ProcedimientoDimensional` (mismo `evaluar()`, distinto criterio); `Defecto` → `DefectoVisual` / `DefectoDimensional`; `CalidadError` → excepciones propias |
 | **Clase abstracta** | `Procedimiento(ABC)` con `@abstractmethod evaluar` |
+| **Métodos de clase y estáticos** | `@classmethod Empresa.cargar`; `@staticmethod Defecto.from_dict`, `Reporte.from_dict` y `Empresa.cargar_reportes_json` |
 | **Composición, agregación y asociación** | Lote–Muestra y Muestra–Pila (composición); Profesional–Certificación (agregación); Inspección con sus 4 componentes (asociación) |
-| **Atributos de clase y constantes** | `Lote.ESTADOS_FINALES`, `Empresa.CLASES_POR_CATEGORIA`, `CLASE_DEFECTO`, `TIPO` |
+| **Atributos de clase y constantes** | `Lote.ESTADOS_FINALES`, `Empresa.CLASES_POR_CATEGORIA`, `CLASE_DEFECTO`, `TIPO`, `Simulador.DEFECTOS_VISUALES` |
 | **Métodos mágicos** | `__repr__`, `__str__`, `__len__` y `__iter__` en `ListaEnlazada`, `Pila` y `Cola` |
-| **Excepciones propias** | Jerarquía con base `CalidadError` y `**detalles`; `try/except` en `main.py` |
-| **`lambda`, `map`, `filter`, `all`, `any`, `sum`** | `Lote` (porcentaje, críticos, cerradas), `evaluar()` de ambos procedimientos, `Empresa._filtrar`, `Muestra.suma_gravedades`, `Reporte` (copias), `validar_nombre_tecnico` |
-| **Diccionarios** | Registro de `Empresa` (`{categoría: {id: objeto}}`) recorrido con `.items()`; `Lote._muestras`; certificaciones de `Profesional`; `conteo_por_tipo` con `.get()` |
-| **`*args` / `**kwargs`** | `crear_registrar_procedimiento(tipo, **kwargs)`, filtros `listar_*(**filtros)`, `CalidadError(**detalles)` |
+| **Excepciones propias** | Jerarquía con base `CalidadError` y `**detalles`; `raise ... from e` al convertir errores de archivo; `try/except` en las tres interfaces |
+| **`lambda`, `map`, `filter`, `zip`, `all`, `any`, `sum`** | `Lote` (porcentaje, críticos, cerradas), `evaluar()` de ambos procedimientos, `Empresa._filtrar` y `reportes()`, `Muestra.suma_gravedades`, `Reporte` (copias y `to_dict`), `Simulador`, `validar_nombre_tecnico` |
+| **Diccionarios** | Registro de `Empresa` (`{categoría: {id: objeto}}`) recorrido con `.items()`; `Lote._muestras`; certificaciones de `Profesional`; `conteo_por_tipo` con `.get()`; `to_dict()`; tabla de clases en `Defecto.from_dict` |
+| **`*args` / `**kwargs`** | `crear_registrar_procedimiento(tipo, **kwargs)`, filtros `listar_*(**filtros)`, `CalidadError(**detalles)`, `Clase(**data)` al cargar JSON, `simular_lote(..., **opciones)` |
 | **Tuplas** | Retornos inmutables: `defectos`, `muestras`, `historial_estados`, `pendientes_en_orden()` |
 | **Nodos y lista enlazada** | `Nodo` y `ListaEnlazada` (simple, con `inicio`/`fin`), con un solo tipo de dato por lista |
 | **Pila (LIFO)** | Historial de estados de cada `Muestra`: el `peek()` es el estado actual |
 | **Cola (FIFO)** | Muestras pendientes del `Lote`: se inspeccionan en orden de creación |
 | **Generadores (`yield`)** | `ListaEnlazada.__iter__` recorre los nodos sin copiarlos |
-| **Fechas** | `date` y `timedelta` en calibraciones, certificaciones e inspecciones |
-| **Tests con pytest** | 297 tests, con fixtures (`conftest.py`), `parametrize` y `monkeypatch` |
+| **Serialización** | JSON (`dump`/`load`, `to_dict()`, `Clase(**data)`) para los reportes; pickle (`dump`/`load` en modo binario) para la empresa completa; `with open(...)` |
+| **Bibliotecas** | `datetime` (`date`, `timedelta`), `random` (`Random`, `randint`, `uniform`, `choice`), `json`, `pickle`, `uuid`, `abc` |
+| **Entrada de datos** | `input()` con validación y reintento en `consola.py` |
+| **Tests con pytest** | 387 tests, con fixtures (`conftest.py`), `parametrize`, `monkeypatch` (para simular el `input()` del usuario) y `tmp_path` (archivos temporales) |
 
 ---
 
-## 7. Uso de IA
+## 10. Uso de IA
 
 El modelo de dominio, las clases base y los tests iniciales los construimos nosotros. Después usamos Claude (Claude Code) para revisar el código y aplicar los conceptos teóricos en los lugares que correspondía. Los cambios más importantes en los que ayudó:
 
@@ -190,12 +266,17 @@ El modelo de dominio, las clases base y los tests iniciales los construimos noso
 - `Inspeccion.cerrar()` marcaba la inspección como cerrada antes de cerrar la muestra: si el cierre fallaba, el estado quedaba inconsistente.
 - `validar_texto` rechazaba nombres reales como "ISO 9001" o "Tornillos M8". Se agregó `validar_nombre_tecnico`.
 - Un filtro mal escrito en `Empresa` (por ejemplo `estdo=`) devolvía una lista vacía sin avisar. Ahora lanza `DatosInvalidosError`.
+- `listar_equipos(categoria=...)` lanzaba `TypeError`: el parámetro de `_filtrar` se llamaba igual que el atributo `categoria` de `Equipo`. Se renombró a `nombre_registro`.
+- En la primera versión del menú, escribir mal un dato **después** de iniciar una inspección dejaba la muestra trabada en `EN_INSPECCION` para siempre, y el lote nunca se podía decidir. Ahora las observaciones se cargan antes de inspeccionar.
+- En la interfaz: crear muestras que no entraban dejaba creadas solo algunas; se podía inspeccionar sin observaciones; al fallar la exportación JSON se mostraba "None"; y dos profesionales con el mismo nombre no se podían distinguir.
 
 **Dónde aplicar los conceptos teóricos**
 - Reemplazar bucles por `map`, `filter` y `lambda` en `Lote`, en los procedimientos, en `Empresa` y en `main.py`, sin usar `map` solo para provocar efectos.
 - Dónde usar la pila y la cola dentro del dominio: el historial de estados de la muestra y la cola de pendientes del lote. Adaptar sus métodos a los nombres de la cátedra.
 - Agregar `__len__` y `__iter__` a la lista enlazada para que funcione con `for`, `map` y `filter`.
 - Convertir `Procedimiento` en clase abstracta y crear subclases de `Defecto` para cumplir la regla 3.
-- Agregar tests para las pruebas mínimas de la consigna que todavía no estaban cubiertas, por ejemplo los identificadores únicos.
+- Elegir qué guardar con JSON (los reportes, legibles) y qué con pickle (la empresa completa), y cómo convertir `UUID`, `date` y los enums para JSON.
+- Ubicar la aleatoriedad en un `Simulador` con semilla, fuera del dominio, para que los resultados se puedan repetir.
+- Agregar tests para las pruebas mínimas de la consigna que todavía no estaban cubiertas (por ejemplo, los identificadores únicos), y quitar tests y fixtures repetidos o sin uso.
 
 Todo el código generado lo revisamos, lo probamos con `pytest` y lo podemos explicar.
