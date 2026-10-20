@@ -3,7 +3,7 @@ Usa tkinter, que viene incluido con Python: no hay que instalar nada.
 Toda la lógica está en las clases del TP; esta ventana solo las usa.
 Cuando una operación no se puede hacer, la excepción del sistema se muestra
 en una ventana de error y el programa sigue funcionando.
-Se corre con: py app.py"""
+Se corre con: py menu.py"""
 
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -16,7 +16,7 @@ from classes.certificacion import Certificacion
 from classes.observacion_visual import ObservacionVisual
 from classes.observacion_dimensional import ObservacionDimensional
 from classes.estado_muestra import EstadoMuestra
-from classes.excepciones import CalidadError, DatosInvalidosError
+from classes.excepciones import CalidadError, DatosInvalidosError, TransicionIlegalError
 
 
 # Colores de la interfaz
@@ -120,9 +120,9 @@ class App:
 
         self.refrescar()
 
-    # ============================================================
+    
     #  ESTILOS
-    # ============================================================
+    
 
     def _estilos(self):
         estilo = ttk.Style()
@@ -158,7 +158,7 @@ class App:
         """Ejecuta una acción del sistema: si lanza una excepción propia, la muestra."""
         try:
             resultado = accion()
-        except CalidadError as e:
+        except (CalidadError, OSError) as e:  # OSError: problemas al leer/escribir archivos
             messagebox.showerror(type(e).__name__, str(e))
             return None
         self.refrescar()
@@ -166,9 +166,9 @@ class App:
             self.estado.set(f"✔ {mensaje_ok}")
         return resultado
 
-    # ============================================================
+    
     #  PESTAÑA 1: REGISTRO
-    # ============================================================
+    
 
     def _pestania_registro(self):
         marco = ttk.Frame(self.pestanias, padding=14)
@@ -253,6 +253,16 @@ class App:
             lote = self.muestra_lote.elegido("lote")
             cantidad = leer_entero(self.muestra_cantidad.get(), "cantidad de muestras")
             unidades = leer_entero(self.muestra_unidades.get(), "unidades por muestra")
+            if cantidad <= 0:
+                raise DatosInvalidosError("La cantidad de muestras debe ser mayor a 0")
+            # Controlamos ANTES de crear: o se crean todas las muestras o ninguna
+            libre = lote.cantidad_fabricada - sum(map(lambda m: m.cantidad, lote.muestras))
+            if cantidad * unidades > libre:
+                raise TransicionIlegalError(
+                    f"No entran {cantidad} muestras de {unidades} unidades "
+                    f"({cantidad * unidades} en total): al lote le quedan {libre} unidades libres. "
+                    f"No se creó ninguna muestra."
+                )
             for _ in range(cantidad):
                 self.empresa.crear_registrar_muestra(unidades, lote)  # el lote controla la capacidad
             return cantidad
@@ -285,9 +295,9 @@ class App:
             return self.empresa.crear_registrar_procedimiento(tipo, **datos)  # **kwargs
         self._ejecutar(accion, "Procedimiento creado")
 
-    # ============================================================
+    
     #  PESTAÑA 2: INSPECCIÓN
-    # ============================================================
+
 
     def _pestania_inspeccion(self):
         marco = ttk.Frame(self.pestanias, padding=14)
@@ -425,6 +435,11 @@ class App:
         def accion():
             muestra = self.insp_muestra.elegido("muestra")
             proc = self.insp_proc.elegido("procedimiento")
+            if not self.observaciones:
+                raise DatosInvalidosError(
+                    "Cargá al menos una observación antes de inspeccionar "
+                    "(si no hay defectos, agregá una observación sin defecto)."
+                )
             # Inspeccion valida todo en su constructor antes de cambiar la muestra
             insp = self.empresa.lanzar_inspeccion(
                 muestra, self.insp_prof.elegido("profesional"), self.insp_equipo.elegido("equipo"),
@@ -449,9 +464,9 @@ class App:
         self.siguiente_de_la_cola(avisar=False)  # deja elegida la próxima pendiente
         self.estado.set(f"✔ Inspección cerrada: muestra {estado}")
 
-    # ============================================================
+
     #  PESTAÑA 3: LOTES
-    # ============================================================
+    
 
     def _pestania_lotes(self):
         marco = ttk.Frame(self.pestanias, padding=14)
@@ -526,9 +541,9 @@ class App:
                                 f"no conformes (se rechaza si supera el 5%)")
             self.estado.set(f"✔ Lote '{lote.nombre_componentes}' {estado.value}")
 
-    # ============================================================
+    
     #  PESTAÑA 4: REPORTES
-    # ============================================================
+    
 
     def _pestania_reportes(self):
         marco = ttk.Frame(self.pestanias, padding=14)
@@ -571,11 +586,12 @@ class App:
                                             filetypes=[("JSON", "*.json")])
         if ruta:
             cantidad = self._ejecutar(lambda: self.empresa.exportar_reportes_json(ruta))
-            self.estado.set(f"✔ Se exportaron {cantidad} reporte(s) a {ruta}")
+            if cantidad is not None:
+                self.estado.set(f"✔ Se exportaron {cantidad} reporte(s) a {ruta}")
 
-    # ============================================================
+   
     #  GUARDAR / CARGAR / DATOS DE EJEMPLO
-    # ============================================================
+    
 
     def guardar_empresa(self):
         ruta = filedialog.asksaveasfilename(defaultextension=".pkl", initialfile="empresa.pkl",
@@ -589,7 +605,7 @@ class App:
             return
         try:
             self.empresa = Empresa.cargar(ruta)
-        except CalidadError as e:
+        except (CalidadError, OSError) as e:
             messagebox.showerror(type(e).__name__, str(e))
             return
         self.refrescar()
@@ -616,9 +632,8 @@ class App:
                             "• Equipo visual, equipo dimensional y un equipo visual VENCIDO (200 días)\n"
                             "• Procedimiento visual (límite 5, pide ISO) y dimensional (límite 10)")
 
-    # ============================================================
-    #  REFRESCAR TODA LA INTERFAZ
-    # ============================================================
+
+   
 
     def _describir_muestra(self, m):
         return f"Muestra {id_corto(m.id)} · {m.cantidad} u. · {m.estado.value}"
@@ -627,7 +642,7 @@ class App:
         e = self.empresa
         hoy = date.today()
         describir_lote = lambda l: f"{l.nombre_componentes} ({id_corto(l.id)}) · {l.estado.value}"
-        describir_prof = lambda p: (f"{p.nombre} · certificaciones: "
+        describir_prof = lambda p: (f"{p.nombre} ({id_corto(p.id)}) · certificaciones: "
                                     f"{', '.join(p.certificaciones) if p.certificaciones else 'ninguna'}")
         describir_equipo = lambda q: (f"{q.categoria} ({id_corto(q.id)}) · calibrado {q.fecha_calibracion}"
                                       f"{'' if q.esta_calibrado(hoy) else ' · VENCIDO'}")
