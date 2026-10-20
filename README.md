@@ -12,17 +12,6 @@ Desde la carpeta del proyecto:
 
 ```bash
 py main.py            # simulación completa por consola
-py -m pytest -q       # 297 tests
-```
-
-`main.py` crea un lote de 1000 tornillos con 20 muestras, muestra tres inspecciones rechazadas (profesional sin certificación, equipo vencido y equipo incompatible), inspecciona las 20 muestras en orden y decide el lote: sale **APROBADO** con exactamente 5 % no conforme.
-
-## 1. Cómo ejecutarlo
-
-Desde la carpeta del proyecto:
-
-```bash
-py main.py            # simulación completa por consola
 py -m pytest -q       # 330 tests
 ```
 
