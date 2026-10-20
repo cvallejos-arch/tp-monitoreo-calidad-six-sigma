@@ -257,7 +257,19 @@ La consigna deja **fuera de alcance la interfaz gráfica y la persistencia**. La
 
 ## 10. Uso de IA
 
-El modelo de dominio, las clases base y los tests iniciales los construimos nosotros. Después usamos Claude (Claude Code) para revisar el código y aplicar los conceptos teóricos en los lugares que correspondía. Los cambios más importantes en los que ayudó:
+El modelo de dominio, las clases base y los tests iniciales los construimos nosotros. Después usamos Claude (Claude Code) para revisar el código y aplicar los conceptos teóricos en los lugares que correspondía.
+
+**Qué se generó con IA:** con Claude, a partir de nuestras indicaciones, se generaron:
+- la interfaz gráfica (`menu.py`) y el menú por consola (`consola.py`);
+- el `Simulador` (`classes/simulador.py`);
+- la serialización con JSON y pickle;
+- `Nodo` y `ListaEnlazada`;
+- buena parte de los tests nuevos;
+- la sección 14 de `main.py` y este README.
+
+Después los revisamos, los adaptamos al resto del sistema y los probamos con `pytest`.
+
+Los cambios más importantes en los que ayudó:
 
 **Detección de errores**
 - Un commit dejó `Muestra` usando `self._estado`, un atributo que ya no existía, y eso hacía fallar 33 tests. Ese mismo commit había deshecho mejoras anteriores en `Lote`. Se identificó la causa y se corrigió.
