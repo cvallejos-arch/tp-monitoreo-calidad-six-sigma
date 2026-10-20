@@ -281,12 +281,10 @@ Los cambios más importantes en los que ayudó:
 - En la interfaz: crear muestras que no entraban dejaba creadas solo algunas; se podía inspeccionar sin observaciones; al fallar la exportación JSON se mostraba "None"; y dos profesionales con el mismo nombre no se podían distinguir.
 
 **Dónde aplicar los conceptos teóricos**
-- Reemplazar bucles por `map`, `filter` y `lambda` en `Lote`, en los procedimientos, en `Empresa` y en `main.py`, sin usar `map` solo para provocar efectos.
-- Dónde usar la pila y la cola dentro del dominio: el historial de estados de la muestra y la cola de pendientes del lote. Adaptar sus métodos a los nombres de la cátedra.
 - Agregar `__len__` y `__iter__` a la lista enlazada para que funcione con `for`, `map` y `filter`.
 - Convertir `Procedimiento` en clase abstracta y crear subclases de `Defecto` para cumplir la regla 3.
-- Elegir qué guardar con JSON (los reportes, legibles) y qué con pickle (la empresa completa), y cómo convertir `UUID`, `date` y los enums para JSON.
+- Cómo convertir `UUID`, `date` y los enums para JSON.
 - Ubicar la aleatoriedad en un `Simulador` con semilla, fuera del dominio, para que los resultados se puedan repetir.
-- Agregar tests para las pruebas mínimas de la consigna que todavía no estaban cubiertas (por ejemplo, los identificadores únicos), y quitar tests y fixtures repetidos o sin uso.
+- Quitar tests y fixtures repetidos o sin uso.
 
 Todo el código generado lo revisamos, lo probamos con `pytest` y lo podemos explicar.
