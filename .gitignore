@@ -207,6 +207,8 @@ marimo/_lsp/
 __marimo__/
 
 # Projet - fichiers prives / assistant AI
+AGENTS.md
+GEMINI.md
 GUIA_EXPOSICION_ORAL.md
 .agents/
 .gemini/
