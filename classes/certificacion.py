@@ -21,7 +21,7 @@ class Certificacion:
         return self._fecha_fin
 
     def es_vigente(self, fecha):
-        """Verifica si la certificación es vigente en la fecha dada (bornes inclusivos)."""
+        """Verifica si la certificación es vigente en la fecha dada (los extremos se incluyen)."""
         return self._fecha_inicio <= fecha <= self._fecha_fin
 
     def __repr__(self):

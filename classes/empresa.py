@@ -93,18 +93,20 @@ class Empresa:
         """Accede al registro de muestras por id (dict access)."""
         return self._registros["muestras"].get(muestra_id)
 
-    def _filtrar(self, categoria, **filtros):
+    def _filtrar(self, nombre_registro, **filtros):
         """Retorna los objetos de una categoría del registro que cumplen TODOS los
         filtros {atributo: valor}. Sin filtros, retorna todos.
-        Lanza DatosInvalidosError si algún atributo no existe en esa clase."""
-        clase = Empresa.CLASES_POR_CATEGORIA[categoria]
+        Lanza DatosInvalidosError si algún atributo no existe en esa clase.
+        El parámetro se llama nombre_registro (y no 'categoria') para no chocar con
+        un filtro por atributo: Equipo tiene un atributo 'categoria'."""
+        clase = Empresa.CLASES_POR_CATEGORIA[nombre_registro]
 
         # Se recorren los filtros (dict) para validar que cada atributo exista.
         for attr in filtros.keys():
             if not hasattr(clase, attr):
                 raise DatosInvalidosError(
                     f"'{clase.__name__}' no tiene el atributo '{attr}' para filtrar.",
-                    categoria=categoria,
+                    registro=nombre_registro,
                     atributo=attr
                 )
 
@@ -114,7 +116,7 @@ class Empresa:
                 lambda obj: all(
                     map(lambda par: getattr(obj, par[0]) == par[1], filtros.items())
                 ),
-                self._registros[categoria].values()
+                self._registros[nombre_registro].values()
             )
         )
 

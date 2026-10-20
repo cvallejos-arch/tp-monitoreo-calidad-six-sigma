@@ -1,4 +1,4 @@
-"""Tests des enums EstadoLote et EstadoMuestra."""
+"""Tests de los enums EstadoLote y EstadoMuestra."""
 import pytest
 
 from classes.estado_lote import EstadoLote

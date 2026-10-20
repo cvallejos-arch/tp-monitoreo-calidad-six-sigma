@@ -7,14 +7,10 @@ class ProcedimientoVisual(Procedimiento):
 
     CLASE_DEFECTO = DefectoVisual
 
-    def __init__(self, nivel_iluminacion_minimo=None, **kwargs):
+    def __init__(self, **kwargs):
+        # Si no se indica la categoría de equipo, por defecto es "Visual"
         kwargs.setdefault("categoria_equipo_requerida", "Visual")
         super().__init__(**kwargs)
-        self._nivel_iluminacion_minimo = nivel_iluminacion_minimo
-
-    @property
-    def nivel_iluminacion_minimo(self):
-        return self._nivel_iluminacion_minimo
 
     def evaluar(self, observaciones):
         """Evalúa cada observación visual. Si defecto_detectado es True,

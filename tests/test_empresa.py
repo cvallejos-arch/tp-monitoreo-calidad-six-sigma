@@ -4,6 +4,9 @@ import pytest
 from datetime import date
 
 from classes.empresa import Empresa
+from classes.certificacion import Certificacion
+from classes.proc_visual import ProcedimientoVisual
+from classes.proc_dimensional import ProcedimientoDimensional
 from classes.estado_lote import EstadoLote
 from classes.estado_muestra import EstadoMuestra
 from classes.excepciones import DatosInvalidosError
@@ -57,6 +60,68 @@ class TestFiltrar:
         m1.iniciar_inspeccion()
         assert empresa.listar_muestras(estado=EstadoMuestra.EN_INSPECCION) == [m1]
         assert len(empresa.listar_muestras(estado=EstadoMuestra.PENDIENTE)) == 1
+
+
+    def test_filtrar_inspecciones_por_cerrada(self):
+        empresa = Empresa()
+        lote = empresa.crear_registrar_lote("Arandelas", 100)
+        muestra = empresa.crear_registrar_muestra(10, lote)
+        prof = empresa.crear_registrar_profesional("Laura")
+        prof.agregar_certificacion(Certificacion("ISO", date(2025, 1, 1), date(2025, 12, 31)))
+        equipo = empresa.crear_registrar_equipo("Visual", date(2025, 5, 1))
+        proc = empresa.crear_registrar_procedimiento(ProcedimientoVisual, limite_gravedad_acumulada=5)
+        insp = empresa.lanzar_inspeccion(muestra, prof, equipo, proc, date(2025, 6, 1))
+
+        assert empresa.listar_inspecciones(cerrada=False) == [insp]
+        assert empresa.listar_inspecciones(cerrada=True) == []
+
+        insp.cerrar()
+        assert empresa.listar_inspecciones(cerrada=True) == [insp]
+        assert empresa.listar_inspecciones(cerrada=False) == []
+
+
+class TestListarProfesionalesEquiposProcedimientos:
+    """Métodos públicos que usa la interfaz para no acceder a empresa._registros."""
+
+    def test_listar_profesionales(self):
+        empresa = Empresa()
+        ana = empresa.crear_registrar_profesional("Ana")
+        carlos = empresa.crear_registrar_profesional("Carlos")
+        assert empresa.listar_profesionales() == [ana, carlos]
+        assert empresa.listar_profesionales(nombre="Ana") == [ana]
+
+    def test_listar_equipos_por_categoria(self):
+        empresa = Empresa()
+        visual = empresa.crear_registrar_equipo("Visual", date(2025, 6, 1))
+        dimensional = empresa.crear_registrar_equipo("Dimensional", date(2025, 6, 1))
+        assert empresa.listar_equipos() == [visual, dimensional]
+        assert empresa.listar_equipos(categoria="Dimensional") == [dimensional]
+
+    def test_listar_procedimientos(self):
+        empresa = Empresa()
+        visual = empresa.crear_registrar_procedimiento(
+            ProcedimientoVisual, limite_gravedad_acumulada=5, certificacion_requerida="ISO")
+        dimensional = empresa.crear_registrar_procedimiento(
+            ProcedimientoDimensional, limite_gravedad_acumulada=10)
+        assert empresa.listar_procedimientos() == [visual, dimensional]
+        assert empresa.listar_procedimientos(certificacion_requerida="ISO") == [visual]
+
+    def test_listas_vacias_en_empresa_nueva(self):
+        empresa = Empresa()
+        assert empresa.listar_profesionales() == []
+        assert empresa.listar_equipos() == []
+        assert empresa.listar_procedimientos() == []
+
+    def test_retorna_lista_nueva(self):
+        """Modificar la lista devuelta no cambia el registro de la empresa."""
+        empresa = Empresa()
+        empresa.crear_registrar_profesional("Ana")
+        empresa.listar_profesionales().clear()
+        assert len(empresa.listar_profesionales()) == 1
+
+    def test_filtro_inexistente_lanza_error(self):
+        with pytest.raises(DatosInvalidosError):
+            Empresa().listar_equipos(color="rojo")
 
 
 class TestResumen:

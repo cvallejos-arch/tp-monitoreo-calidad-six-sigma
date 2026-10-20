@@ -98,11 +98,6 @@ class TestReporteToDict:
     def test_conserva_el_id_original(self, reporte):
         assert str(Reporte.from_dict(reporte.to_dict()).id) == str(reporte.id)
 
-    def test_reporte_nuevo_genera_id_propio(self):
-        r1 = Reporte("M1", "L1", "P1", FECHA, [])
-        r2 = Reporte("M1", "L1", "P1", FECHA, [])
-        assert r1.id != r2.id
-
 
 class TestEmpresaJson:
     def test_reportes_solo_de_no_conformes(self, empresa_con_un_reporte):

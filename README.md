@@ -139,7 +139,7 @@ En todos los rechazos de la sección 5, la muestra queda en `PENDIENTE`: las val
 | 8 | No conforme si hay un crítico o si la suma supera el límite | `Muestra.cerrar` | `test_muestra` |
 | 9 | Una muestra cerrada no se puede modificar ni reinspeccionar | `Muestra.agregar_defecto`; `defectos` es una tupla | `test_muestra`, `test_inspeccion` |
 | 10 | Un único reporte con copia inmutable, solo si es no conforme | `Muestra.cerrar` → `Reporte` | `test_reporte` |
-| 11 | El lote se decide solo si todas sus muestras están cerradas; rechazado si supera el 5 %; decisión final | `Lote.decidir` | `test_lote`, `test_estado_lote` |
+| 11 | El lote se decide solo si todas sus muestras están cerradas; rechazado si supera el 5 %; decisión final | `Lote.decidir` | `test_lote`, `test_estados` |
 | 12 | Las consultas solo miran muestras cerradas y no tienen efectos | `_muestras_cerradas`, `total_defectos_criticos`, `conteo_por_tipo` | `test_lote` |
 
 ---

@@ -1,4 +1,4 @@
-"""Tests de Reporte: contenu, copie immutable des défauts, unicité."""
+"""Tests de Reporte: contenido, copia inmutable de los defectos y unicidad."""
 import pytest
 from datetime import date
 

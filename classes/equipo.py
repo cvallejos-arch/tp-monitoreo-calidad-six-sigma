@@ -22,7 +22,7 @@ class Equipo:
 
     def esta_calibrado(self, fecha):
         """Un equipo está calibrado si la fecha de calibración está dentro de
-        los 182 días anteriores a la fecha de inspección (bornes inclusivos).
+        los 182 días anteriores a la fecha de inspección (los extremos se incluyen).
         fecha_calibracion <= fecha_inspeccion y
         fecha_inspeccion - fecha_calibracion <= 182 días."""
         dias = (fecha - self._fecha_calibracion).days
