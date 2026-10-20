@@ -130,6 +130,18 @@ class Empresa:
         """Retorna las inspecciones registradas, opcionalmente filtradas por atributos (kwargs)."""
         return self._filtrar("inspecciones", **filtros)
 
+    def listar_profesionales(self, **filtros):
+        """Retorna los profesionales registrados, opcionalmente filtrados por atributos (kwargs)."""
+        return self._filtrar("profesionales", **filtros)
+
+    def listar_equipos(self, **filtros):
+        """Retorna los equipos registrados, opcionalmente filtrados por atributos (kwargs)."""
+        return self._filtrar("equipos", **filtros)
+
+    def listar_procedimientos(self, **filtros):
+        """Retorna los procedimientos registrados, opcionalmente filtrados por atributos (kwargs)."""
+        return self._filtrar("procedimientos", **filtros)
+
     def resumen(self):
         """Retorna un dict {categoria: cantidad registrada}, recorriendo el registro."""
         return dict(
