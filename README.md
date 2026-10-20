@@ -17,6 +17,43 @@ py -m pytest -q       # 297 tests
 
 `main.py` crea un lote de 1000 tornillos con 20 muestras, muestra tres inspecciones rechazadas (profesional sin certificación, equipo vencido y equipo incompatible), inspecciona las 20 muestras en orden y decide el lote: sale **APROBADO** con exactamente 5 % no conforme.
 
+## 1. Cómo ejecutarlo
+
+Desde la carpeta del proyecto:
+
+```bash
+py main.py            # simulación completa por consola
+py -m pytest -q       # 330 tests
+```
+
+`main.py` recorre el flujo completo y además provoca a propósito cada error del sistema, para mostrar dónde y por qué se rechaza cada operación:
+
+- **Lote 1 (Tornillos):** 1000 unidades con 20 muestras. Se inspeccionan en el orden de la cola y el lote sale **APROBADO** con exactamente 5 % no conforme (la regla rechaza solo si se supera el 5 %).
+- **Lote 2 (Arandelas):** 4 muestras que muestran las reglas de cierre: suma de gravedades igual al límite → `CONFORME`; suma mayor al límite → `NO_CONFORME`; un defecto crítico → `NO_CONFORME`; sin defectos → `CONFORME`. Con 50 % no conforme, el lote sale **RECHAZADO**.
+
+**Casos de error que se demuestran:**
+
+| Caso | Qué se intenta | Excepción |
+|---|---|---|
+| 1a | Crear una muestra que supera la cantidad fabricada del lote | `TransicionIlegalError` |
+| 1b | Crear un lote con cantidad 0 | `DatosInvalidosError` |
+| 4a | Instanciar `Procedimiento` (clase abstracta) | `TypeError` (de Python) |
+| 5a | Inspeccionar con un profesional sin la certificación requerida | `CertificacionNoVigenteError` |
+| 5b | Inspeccionar con una certificación vencida | `CertificacionNoVigenteError` |
+| 5c | Inspeccionar con un equipo calibrado hace 183 días (el de 182 se acepta) | `EquipoNoAptoError` |
+| 5d | Inspeccionar con un equipo de otra categoría | `EquipoNoAptoError` |
+| 5e | Fallan la certificación y el equipo a la vez: sale solo el primero, por el orden de validación | `CertificacionNoVigenteError` |
+| 5f | Crear una observación con gravedad 6 | `DatosInvalidosError` |
+| 6a | Inspeccionar de nuevo una muestra ya cerrada | `TransicionIlegalError` |
+| 6b / 6c | Ejecutar o cerrar una inspección ya cerrada | `InspeccionInvalidaError` |
+| 6d | Agregar un defecto a una muestra cerrada | `TransicionIlegalError` |
+| 6e | Decidir un lote con muestras pendientes | `TransicionIlegalError` |
+| 7 | Pedir la siguiente inspección con la cola vacía | `EstructuraVaciaError` |
+| 9 | Decidir de nuevo un lote ya decidido | `TransicionIlegalError` |
+| 11 | Filtrar por un atributo que no existe | `DatosInvalidosError` |
+
+En todos los rechazos de la sección 5, la muestra queda en `PENDIENTE`: las validaciones se hacen en el constructor de `Inspeccion` antes de cambiar el estado.
+
 ---
 
 ## 2. Flujo de una inspección
