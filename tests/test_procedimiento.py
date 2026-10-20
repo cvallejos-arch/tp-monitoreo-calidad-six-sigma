@@ -1,4 +1,4 @@
-"""Tests de Procedimiento: évaluation polymorphe dimensional/visual."""
+"""Tests de Procedimiento: evaluación polimórfica visual y dimensional."""
 import pytest
 
 from classes.procedimiento import Procedimiento
@@ -116,7 +116,7 @@ class TestProcedimientoDimensional:
         assert defectos[0].tipo == "DIMENSIONAL"
 
     def test_polimorfismo_misma_interfaz(self):
-        """Les deux types de procédure répondent à la même opération evaluar()."""
+        """Los dos tipos de procedimiento responden a la misma operación evaluar()."""
         proc_v = ProcedimientoVisual(
             limite_gravedad_acumulada=5,
             categoria_equipo_requerida="Visual"

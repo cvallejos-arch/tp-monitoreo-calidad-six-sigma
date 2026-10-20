@@ -1,4 +1,4 @@
-"""Tests de Equipo: calibración aux bornes (182j exacte, 183j vencida), compatibilité."""
+"""Tests de Equipo: calibración en el límite (182 días exactos válida, 183 vencida) y compatibilidad."""
 import pytest
 from datetime import date, timedelta
 
@@ -29,7 +29,7 @@ class TestCalibracion:
         assert equipo.esta_calibrado(fecha) is True
 
     def test_calibrado_exactamente_182_dias(self):
-        """Exactement à 182 jours = calibrado (borne inclusive)."""
+        """Exactamente 182 días = calibrado (el extremo se incluye)."""
         fecha_inspeccion = date(2025, 6, 15)
         fecha_calibracion = fecha_inspeccion - timedelta(days=182)
         equipo = Equipo("Dimensional", fecha_calibracion)

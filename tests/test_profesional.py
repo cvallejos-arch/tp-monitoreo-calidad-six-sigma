@@ -1,4 +1,4 @@
-"""Tests de Profesional: ajout certification, vérification vigente, dict usage."""
+"""Tests de Profesional: agregar certificaciones, vigencia y uso del diccionario."""
 import pytest
 from datetime import date
 

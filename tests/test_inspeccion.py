@@ -1,4 +1,4 @@
-"""Tests d'Inspeccion: flux complet, certification, calibration, catégorie incompatible."""
+"""Tests de Inspeccion: flujo completo, certificación, calibración y categoría incompatible."""
 import pytest
 from datetime import date, timedelta
 
@@ -24,7 +24,7 @@ FECHA = date(2025, 6, 15)
 
 
 def _setup_basico(categoria="Visual", con_cert=False, cert_nombre=None):
-    """Helper pour créer les objets de base d'une inspection."""
+    """Crea los objetos base de una inspección."""
     muestra = Muestra(50, "L1")
     profesional = Profesional("Ana")
     equipo = Equipo(categoria, FECHA - timedelta(days=100))
@@ -142,7 +142,7 @@ class TestEquipoValidacion:
     def test_equipo_calibracion_vencida(self):
         muestra = Muestra(50, "L1")
         prof = Profesional("Ana")
-        equipo = Equipo("Visual", FECHA - timedelta(days=183))  # 183 jours = vencido
+        equipo = Equipo("Visual", FECHA - timedelta(days=183))  # 183 días = vencido
         proc = ProcedimientoVisual(
             limite_gravedad_acumulada=5,
             categoria_equipo_requerida="Visual"
@@ -151,7 +151,7 @@ class TestEquipoValidacion:
             Inspeccion(muestra, prof, equipo, proc, FECHA)
 
     def test_equipo_calibracion_exacta_182_dias(self):
-        """182 días exactos = calibrado (borne inclusive)."""
+        """182 días exactos = calibrado (el extremo se incluye)."""
         muestra = Muestra(50, "L1")
         prof = Profesional("Ana")
         equipo = Equipo("Visual", FECHA - timedelta(days=182))

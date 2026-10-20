@@ -90,7 +90,7 @@ class TestDecisionLote:
         assert lote.decidir() == EstadoLote.APROBADO
 
     def test_lote_aprobado_exactamente_5_porciento(self):
-        """Exactement 5% (1/20) -> APROBADO (no estrictamente mayor)."""
+        """Exactamente 5% (1/20) -> APROBADO (no es estrictamente mayor)."""
         lote = Lote("Tornillos", 1000)
         muestras = [lote.crear_muestra(50) for _ in range(20)]
 

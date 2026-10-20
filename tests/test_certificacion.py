@@ -1,4 +1,4 @@
-"""Tests de Certificacion: vigencia en bornes inclusivos."""
+"""Tests de Certificacion: vigencia con los extremos incluidos."""
 import pytest
 from datetime import date
 
@@ -24,12 +24,12 @@ class TestCreacionCertificacion:
 
 class TestVigenciaCertificacion:
     def test_vigente_en_fecha_inicio(self):
-        """Borne inclusivo inferior."""
+        """Extremo inferior incluido (fecha de inicio)."""
         cert = Certificacion("ISO", date(2025, 1, 1), date(2025, 12, 31))
         assert cert.es_vigente(date(2025, 1, 1)) is True
 
     def test_vigente_en_fecha_fin(self):
-        """Borne inclusivo superior."""
+        """Extremo superior incluido (fecha de fin)."""
         cert = Certificacion("ISO", date(2025, 1, 1), date(2025, 12, 31))
         assert cert.es_vigente(date(2025, 12, 31)) is True
 

@@ -2,7 +2,8 @@
 registra un lote con sus muestras, valida requisitos, ejecuta inspecciones
 visuales y dimensionales, decide el lote y muestra reportes y consultas.
 Además provoca a propósito cada error del sistema para mostrar dónde y por
-qué se rechaza cada operación."""
+qué se rechaza cada operación. Al final simula lotes con observaciones al
+azar usando una semilla, para que cada caso se pueda repetir."""
 
 from datetime import date, timedelta
 
@@ -13,6 +14,7 @@ from classes.proc_visual import ProcedimientoVisual
 from classes.certificacion import Certificacion
 from classes.observacion_visual import ObservacionVisual
 from classes.observacion_dimensional import ObservacionDimensional
+from classes.simulador import Simulador
 from classes.excepciones import (
     CalidadError,
     TransicionIlegalError,
@@ -489,6 +491,58 @@ def main():
           f"{len(lote_cargado.muestras)} muestras")
     muestra_0 = empresa_cargada.obtener_muestra(muestras[0].id)
     print(f"Historial de la muestra 0 recuperado: {texto_historial(muestra_0.historial_estados)}")
+
+    # ============================================================
+    #  14. SIMULACIÓN ALEATORIA (CON SEMILLA)
+    # ============================================================
+    separador("14. SIMULACIÓN ALEATORIA (CON SEMILLA)")
+
+    # El Simulador inventa las observaciones al azar; las reglas del dominio no
+    # cambian. Con la misma semilla se repite exactamente el mismo caso.
+    print("Ejemplo: 5 observaciones visuales al azar con la semilla 7 "
+          "(probabilidad de defecto 0.5):")
+    for obs in Simulador(7).observaciones_visuales(5, prob_defecto=0.5):
+        detalle = f"gravedad {obs.gravedad}" if obs.defecto_detectado else "sin defecto"
+        print(f"  - {obs.descripcion}: {detalle}")
+
+    def simular(semilla):
+        """Crea un lote de 20 muestras y lo inspecciona entero con observaciones al azar."""
+        lote_sim = empresa.crear_registrar_lote("Bulones", 200)
+        for _ in range(20):
+            empresa.crear_registrar_muestra(10, lote_sim)
+        Simulador(semilla).simular_lote(empresa, lote_sim, prof_ana, equipo_visual,
+                                        proc_visual, fecha_hoy, prob_defecto=0.15)
+        return lote_sim
+
+    print("\nLote de 20 muestras, probabilidad de defecto 0.15, límite de gravedad 5:")
+    lotes_simulados = {}
+    for semilla in (5, 1):
+        lote_sim = simular(semilla)
+        no_conf = len(list(filter(lambda m: m.estado == EstadoMuestra.NO_CONFORME,
+                                  lote_sim.muestras)))
+        porcentaje = lote_sim.porcentaje_no_conforme()
+        print(f"  Semilla {semilla}: {no_conf}/20 no conformes ({porcentaje}%) "
+              f"-> {lote_sim.decidir().value}")
+        lotes_simulados[semilla] = lote_sim
+    print("  (semilla 5: exactamente 5 % se aprueba; semilla 1: 10 % supera el 5 % y se rechaza)")
+
+    # Reproducibilidad: misma semilla, mismos estados muestra por muestra
+    repetido = simular(5)
+    estados = lambda lote_x: list(map(lambda m: m.estado, lote_x.muestras))
+    print(f"\nRepitiendo la semilla 5: ¿mismo resultado muestra por muestra? "
+          f"{estados(repetido) == estados(lotes_simulados[5])}")
+
+    # La simulación respeta las validaciones: Carlos no tiene la certificación ISO
+    print("\n14a. Intentando simular con un profesional sin certificación...")
+    lote_carlos = empresa.crear_registrar_lote("Remaches", 10)
+    empresa.crear_registrar_muestra(10, lote_carlos)
+    try:
+        Simulador(1).simular_lote(empresa, lote_carlos, prof_carlos, equipo_visual,
+                                  proc_visual, fecha_hoy)
+    except CertificacionNoVigenteError as e:
+        print(f"   [X] RECHAZADO: {e}")
+        print(f"   La muestra sigue {lote_carlos.muestras[0].estado.value}: "
+              f"se validó antes de iniciar la inspección")
 
     print(f"\n{'='*60}")
     print("  [OK] EJECUCION COMPLETA - TODAS LAS FUNCIONALIDADES DEMOSTRADAS")

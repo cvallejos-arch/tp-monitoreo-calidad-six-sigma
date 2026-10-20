@@ -1,4 +1,4 @@
-"""Tests de Defecto: creación, gravedad 1-5, hors range, defecto critico."""
+"""Tests de Defecto: creación, gravedad 1 a 5, valores fuera de rango y defecto crítico."""
 import pytest
 
 from classes.defecto import Defecto
