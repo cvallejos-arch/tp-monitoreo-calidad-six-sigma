@@ -6,7 +6,7 @@ en una ventana de error y el programa sigue funcionando.
 Se corre con: py menu.py"""
 
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox, filedialog, simpledialog
 from datetime import date, timedelta
 
 from classes.empresa import Empresa
@@ -16,6 +16,7 @@ from classes.certificacion import Certificacion
 from classes.observacion_visual import ObservacionVisual
 from classes.observacion_dimensional import ObservacionDimensional
 from classes.estado_muestra import EstadoMuestra
+from classes.simulador import Simulador
 from classes.excepciones import CalidadError, DatosInvalidosError, TransicionIlegalError
 
 
@@ -334,6 +335,12 @@ class App:
         self.resultado_detalle = ttk.Label(f, text="", wraplength=330, foreground="#4a5568")
         self.resultado_detalle.grid(row=9, column=0, columnspan=2, sticky="w")
 
+        # Simulación: inspecciona todas las muestras pendientes del lote con datos al azar
+        ttk.Button(f, text="🎲  Simulación aleatoria del lote",
+                   command=self.simulacion_aleatoria).grid(row=10, column=0, columnspan=2, sticky="ew", pady=(18, 0))
+        ttk.Label(f, text="Usa el lote, profesional, equipo, procedimiento y fecha elegidos",
+                  foreground="#6b7a90", wraplength=330).grid(row=11, column=0, columnspan=2, sticky="w")
+
         # Columna derecha: observaciones
         f = ttk.LabelFrame(marco, text="2. Observaciones")
         f.grid(row=0, column=1, sticky="nsew", padx=6, pady=6)
@@ -354,6 +361,19 @@ class App:
         botones.grid(row=1, column=0, sticky="w", pady=6)
         ttk.Button(botones, text="+ Agregar observación", command=self.agregar_observacion).pack(side="left")
         ttk.Button(botones, text="Vaciar lista", command=self.vaciar_observaciones).pack(side="left", padx=6)
+
+        # Observaciones generadas al azar con el Simulador (semilla vacía = distinto cada vez)
+        azar = ttk.Frame(f)
+        azar.grid(row=3, column=0, sticky="w", pady=(8, 0))
+        ttk.Label(azar, text="Al azar →  Semilla").pack(side="left")
+        self.azar_semilla = ttk.Entry(azar, width=8)
+        self.azar_semilla.pack(side="left", padx=(4, 12))
+        ttk.Label(azar, text="Cantidad").pack(side="left")
+        self.azar_cantidad = ttk.Entry(azar, width=5)
+        self.azar_cantidad.insert(0, "3")
+        self.azar_cantidad.pack(side="left", padx=(4, 12))
+        ttk.Button(azar, text="🎲 Observaciones al azar",
+                   command=self.observaciones_al_azar).pack(side="left")
 
         self.tabla_obs = ttk.Treeview(f, columns=("desc", "detalle"), show="headings", height=8)
         self.tabla_obs.heading("desc", text="Descripción")
@@ -399,20 +419,94 @@ class App:
                 detectado = self.obs_detectado.get()
                 gravedad = leer_entero(self.obs_gravedad.get(), "gravedad") if detectado else None
                 obs = ObservacionVisual(self.obs_desc.get(), detectado, gravedad)
-                detalle = f"Defecto de gravedad {gravedad}" if detectado else "Sin defecto"
             else:
                 obs = ObservacionDimensional(leer_decimal(self.obs_valor.get(), "valor medido"),
                                              leer_decimal(self.obs_min.get(), "tolerancia mínima"),
                                              leer_decimal(self.obs_max.get(), "tolerancia máxima"),
                                              self.obs_desc.get())
-                fuera = "FUERA de tolerancia" if obs.desviacion > 0 else "dentro de tolerancia"
-                detalle = f"{obs.valor_medido} en [{obs.tolerancia_min}, {obs.tolerancia_max}] → {fuera}"
         except CalidadError as e:
             messagebox.showerror(type(e).__name__, str(e))
             return
+        self._sumar_observacion(obs)
+        self.obs_desc.set("")
+
+    def _sumar_observacion(self, obs):
+        """Agrega una observación a la lista y a la tabla, con un detalle según su tipo."""
+        if isinstance(obs, ObservacionVisual):
+            detalle = f"Defecto de gravedad {obs.gravedad}" if obs.defecto_detectado else "Sin defecto"
+        else:
+            fuera = "FUERA de tolerancia" if obs.desviacion > 0 else "dentro de tolerancia"
+            detalle = f"{obs.valor_medido} en [{obs.tolerancia_min}, {obs.tolerancia_max}] → {fuera}"
         self.observaciones.append(obs)
         self.tabla_obs.insert("", "end", values=(obs.descripcion, detalle))
-        self.obs_desc.set("")
+
+    def _leer_semilla(self, texto):
+        """Semilla vacía = None (un caso distinto cada vez); si no, tiene que ser un entero."""
+        texto = (texto or "").strip()
+        return None if texto == "" else leer_entero(texto, "semilla")
+
+    def _tolerancias_elegidas(self):
+        """Para las dimensionales usa las tolerancias escritas en el formulario, o 9.0 a 10.0."""
+        if self.obs_min.get().strip() and self.obs_max.get().strip():
+            return (leer_decimal(self.obs_min.get(), "tolerancia mínima"),
+                    leer_decimal(self.obs_max.get(), "tolerancia máxima"))
+        return 9.0, 10.0
+
+    def observaciones_al_azar(self):
+        """Genera observaciones con el Simulador según el procedimiento elegido."""
+        def accion():
+            proc = self.insp_proc.elegido("procedimiento")
+            simulador = Simulador(self._leer_semilla(self.azar_semilla.get()))
+            minimo, maximo = self._tolerancias_elegidas()
+            return simulador.observaciones_para(
+                proc, leer_entero(self.azar_cantidad.get(), "cantidad"),
+                tolerancia_min=minimo, tolerancia_max=maximo)
+        observaciones = self._ejecutar(accion)
+        if observaciones is None:
+            return
+        for obs in observaciones:
+            self._sumar_observacion(obs)
+        self.estado.set(f"✔ Se agregaron {len(observaciones)} observaciones al azar")
+
+    def simulacion_aleatoria(self):
+        """Inspecciona al azar todas las muestras pendientes del lote elegido."""
+        semilla = simpledialog.askstring("Simulación aleatoria",
+                                         "Semilla (vacío = al azar):", parent=self.raiz)
+        if semilla is None:  # tocó Cancelar
+            return
+        prob = simpledialog.askstring("Simulación aleatoria",
+                                      "Probabilidad de defecto (0 a 1):",
+                                      initialvalue="0.2", parent=self.raiz)
+        if prob is None:
+            return
+
+        def accion():
+            lote = self.insp_lote.elegido("lote")
+            if lote.siguiente_muestra_pendiente() is None:
+                raise DatosInvalidosError("El lote elegido no tiene muestras pendientes")
+            simulador = Simulador(self._leer_semilla(semilla))
+            minimo, maximo = self._tolerancias_elegidas()
+            inspecciones = simulador.simular_lote(
+                self.empresa, lote, self.insp_prof.elegido("profesional"),
+                self.insp_equipo.elegido("equipo"), self.insp_proc.elegido("procedimiento"),
+                leer_fecha(self.insp_fecha.get()),
+                prob_defecto=leer_decimal(prob, "probabilidad de defecto"),
+                tolerancia_min=minimo, tolerancia_max=maximo)
+            return lote, inspecciones
+        resultado = self._ejecutar(accion)
+        if resultado is None:
+            return
+        lote, inspecciones = resultado
+        muestras = list(map(lambda i: self.empresa.obtener_muestra(i.muestra_id), inspecciones))
+        no_conformes = len(list(filter(lambda m: m.estado == EstadoMuestra.NO_CONFORME, muestras)))
+        messagebox.showinfo(
+            "Simulación aleatoria",
+            f"Se inspeccionaron {len(inspecciones)} muestras al azar"
+            f"{'' if semilla.strip() == '' else f' (semilla {semilla.strip()})'}.\n\n"
+            f"Conformes: {len(inspecciones) - no_conformes}\nNo conformes: {no_conformes}\n\n"
+            f"El lote tiene {lote.porcentaje_no_conforme():.1f}% no conforme. "
+            f"Decidilo en la pestaña 'Lotes y muestras'.")
+        self.estado.set(f"✔ Simulación: {len(inspecciones)} muestras inspeccionadas")
 
     def vaciar_observaciones(self):
         self.observaciones = []
