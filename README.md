@@ -262,8 +262,6 @@ El modelo de dominio, las clases base y los tests iniciales los construimos noso
 **Qué se generó con IA:** con Claude, a partir de nuestras indicaciones, se generaron:
 - la interfaz gráfica (`menu.py`) y el menú por consola (`consola.py`);
 - el `Simulador` (`classes/simulador.py`);
-- la serialización con JSON y pickle;
-- `Nodo` y `ListaEnlazada`;
 - buena parte de los tests nuevos;
 - la sección 14 de `main.py` y este README.
 
