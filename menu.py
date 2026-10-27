@@ -1,10 +1,4 @@
-"""Interfaz gráfica del sistema de monitoreo de calidad (QuantumTech Precision).
-Usa tkinter, que viene incluido con Python: no hay que instalar nada.
-Toda la lógica está en las clases del TP; esta ventana solo las usa y muestra
-sus datos (los gráficos se dibujan a mano sobre un Canvas, sin librerías extra).
-Cuando una operación no se puede hacer, la excepción del sistema se muestra
-en una ventana de error y el programa sigue funcionando.
-Se corre con: py menu.py"""
+"""Interfaz gráfica del sistema de monitoreo de calidad (QuantumTech Precision)."""
 
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog
