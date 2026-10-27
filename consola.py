@@ -375,6 +375,41 @@ def simulacion_aleatoria(empresa):
     print("     Para decidir el lote, usá la opción 'Decidir lote'")
 
 
+def alertas_calibracion(empresa):
+    """Equipos vencidos y próximos a vencer. Usa el árbol AVL de equipos ordenado
+    por fecha de calibración (búsquedas por rango)."""
+    fecha = pedir_fecha("Fecha de referencia")
+    dias = pedir_entero("Avisar los que vencen en los próximos N días", minimo=1)
+    vencidos = empresa.equipos_vencidos_al(fecha)
+    print(f"\nEquipos VENCIDOS al {fecha}: {len(vencidos)}")
+    for equipo in vencidos:
+        print(f"  - {describir_equipo(equipo)} (venció el {equipo.fecha_vencimiento})")
+    a_vencer = empresa.equipos_que_vencen_entre(fecha, fecha + timedelta(days=dias))
+    print(f"Equipos que vencen en los próximos {dias} días: {len(a_vencer)}")
+    for equipo in a_vencer:
+        print(f"  - {describir_equipo(equipo)} (vence el {equipo.fecha_vencimiento})")
+    primero = empresa.equipo_que_vence_primero(fecha)
+    if primero is not None:
+        print(f"El equipo calibrado que vence primero: {describir_equipo(primero)}, "
+              f"el {primero.fecha_vencimiento}")
+
+
+def reportes_por_fecha(empresa):
+    """Reportes de un período, en el orden en que hay que atenderlos: el filtro usa
+    el árbol AVL (búsqueda por rango) y el orden, la cola de prioridad (heap)."""
+    desde = pedir_fecha("Desde")
+    hasta = pedir_fecha("Hasta")
+    cola = empresa.cola_atencion_reportes(desde, hasta)   # valida que desde <= hasta
+    if cola.esta_vacia():
+        print(f"No hay reportes entre {desde} y {hasta}")
+        return
+    print(f"\n{len(cola)} reporte(s) entre {desde} y {hasta}, en orden de atención "
+          f"(primero el más grave):")
+    for turno, r in enumerate(cola.en_orden_de_prioridad(), start=1):
+        print(f"  {turno}. [{id_corto(r)}] {r.fecha} | gravedad máxima {r.gravedad_maxima}, "
+              f"suma {r.suma_gravedades} | {len(r.defectos)} defecto(s)")
+
+
 # ============================================================
 #  MENÚ PRINCIPAL
 # ============================================================
@@ -393,6 +428,8 @@ OPCIONES = {
     "11": ("Guardar / cargar / exportar", archivos),
     "12": ("Cargar datos de ejemplo", cargar_datos_ejemplo),
     "13": ("Simulación aleatoria de un lote", simulacion_aleatoria),
+    "14": ("Alertas de calibración de equipos", alertas_calibracion),
+    "15": ("Reportes por fecha, en orden de atención", reportes_por_fecha),
 }
 
 

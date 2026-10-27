@@ -183,5 +183,14 @@ class TestAtencionDeReportes:
         assert cola.extraer_maximo().fecha == date(2025, 6, 20)
         assert len(cola) == 3
 
+    def test_solo_los_reportes_del_periodo(self, empresa):
+        cola = empresa.cola_atencion_reportes(date(2025, 6, 1), date(2025, 6, 15))
+        fechas = list(map(lambda r: r.fecha, cola.en_orden_de_prioridad()))
+        assert fechas == [date(2025, 6, 5), date(2025, 6, 10)]
+
+    def test_periodo_con_fechas_invertidas(self, empresa):
+        with pytest.raises(DatosInvalidosError):
+            empresa.cola_atencion_reportes(date(2025, 6, 30), date(2025, 6, 1))
+
     def test_sin_reportes(self):
         assert Empresa().cola_atencion_reportes().esta_vacia()
