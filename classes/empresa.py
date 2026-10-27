@@ -8,7 +8,7 @@ from classes.profesional import Profesional
 from classes.equipo import Equipo
 from classes.procedimiento import Procedimiento
 from classes.reporte import Reporte
-from classes.arbol_binario import ArbolBinarioBusqueda
+from classes.arbol_avl import ArbolAVL
 from classes.excepciones import EstructuraVaciaError, DatosInvalidosError
 
 class Empresa:
@@ -154,15 +154,14 @@ class Empresa:
             )
         )
 
-    # --- Indexación con Árbol Binario de Búsqueda (Unidad 8 EDP) ---
+    # --- Índice con árbol AVL ---
 
     def arbol_lotes_por_produccion(self):
-        """Retorna un ArbolBinarioBusqueda con los lotes registrados,
-        indexados por su cantidad fabricada.
-        Permite búsquedas y listados ordenados por volumen de producción."""
-        arbol = ArbolBinarioBusqueda(permitir_duplicados=True)
+        """Retorna un ArbolAVL con los lotes registrados, indexados por cantidad
+        fabricada: permite listarlos ordenados y buscar por volumen de producción."""
+        arbol = ArbolAVL()
         for lote in self._registros["lotes"].values():
-            arbol.insertar(lote, clave=lote.cantidad_fabricada)
+            arbol.insertar(lote.cantidad_fabricada, lote)
         return arbol
 
     # --- Serialización JSON de reportes ---

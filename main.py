@@ -564,8 +564,8 @@ def main():
     lista_demo.invertir_recursivo()
     print(f"  Lista invertida recursivamente: {lista_demo}")
 
-    # 15.2 Árbol Binario de Búsqueda indexando el dominio (Unidad 8)
-    print("\n15.2 Árbol Binario de Búsqueda (ABB) indexando defectos por gravedad:")
+    # 15.2 Árbol AVL indexando el dominio
+    print("\n15.2 Árbol AVL indexando defectos por gravedad:")
     arbol_defectos = lote.arbol_defectos_por_gravedad()
     print(f"  Árbol creado: {arbol_defectos}")
     print(f"  Altura del árbol: {arbol_defectos.altura()}")
@@ -573,14 +573,16 @@ def main():
     for d in arbol_defectos.recorrido_in_orden():
         print(f"    - [{d.tipo}] {d.descripcion} (gravedad {d.gravedad})")
 
-    criticos = arbol_defectos.buscar_todos(5)
-    print(f"  Búsqueda rápida de defectos críticos (gravedad 5) en el árbol: {len(criticos)} encontrados")
+    criticos = arbol_defectos.buscar(5)
+    print(f"  Búsqueda de defectos críticos (gravedad 5) en el árbol: {len(criticos)} encontrados")
 
     # Árbol de lotes por producción
-    print("\n15.3 Árbol Binario de Búsqueda de Lotes por Volumen de Producción:")
+    print("\n15.3 Árbol AVL de lotes por volumen de producción:")
     arbol_lotes = empresa.arbol_lotes_por_produccion()
-    print(f"  Lote con menor producción (mínimo del árbol): {arbol_lotes.minimo().nombre_componentes} ({arbol_lotes.minimo().cantidad_fabricada} un.)")
-    print(f"  Lote con mayor producción (máximo del árbol): {arbol_lotes.maximo().nombre_componentes} ({arbol_lotes.maximo().cantidad_fabricada} un.)")
+    menor = arbol_lotes.minimo()[0]   # minimo()/maximo() devuelven los datos de esa clave
+    mayor = arbol_lotes.maximo()[0]
+    print(f"  Lote con menor producción (mínimo del árbol): {menor.nombre_componentes} ({menor.cantidad_fabricada} un.)")
+    print(f"  Lote con mayor producción (máximo del árbol): {mayor.nombre_componentes} ({mayor.cantidad_fabricada} un.)")
     print("  Recorrido in-orden de lotes por producción creciente:")
     for l in arbol_lotes.recorrido_in_orden():
         print(f"    - {l.nombre_componentes}: {l.cantidad_fabricada} piezas")

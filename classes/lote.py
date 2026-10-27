@@ -4,7 +4,7 @@ from classes.estado_muestra import EstadoMuestra
 from classes.validacion import validar_cantidad, validar_nombre_tecnico
 from classes.excepciones import TransicionIlegalError
 from classes.cola import Cola
-from classes.arbol_binario import ArbolBinarioBusqueda
+from classes.arbol_avl import ArbolAVL
 import uuid
 
 
@@ -182,24 +182,24 @@ class Lote:
 
         return conteo
 
-    # --- Indexación con Árbol Binario de Búsqueda (Unidad 8 EDP) ---
+    # --- Índices con árbol AVL (árboles: Unidad 7; recursión: Unidad 8) ---
 
     def arbol_muestras_por_cantidad(self):
-        """Retorna un ArbolBinarioBusqueda con las muestras del lote indexadas
-        por cantidad. Permite búsquedas rápidas y recorridos ordenados por tamaño."""
-        arbol = ArbolBinarioBusqueda(permitir_duplicados=True)
+        """Retorna un ArbolAVL con las muestras del lote, indexadas por cantidad
+        de unidades. Las muestras con la misma cantidad comparten nodo."""
+        arbol = ArbolAVL()
         for muestra in self._muestras.values():
-            arbol.insertar(muestra, clave=muestra.cantidad)
+            arbol.insertar(muestra.cantidad, muestra)
         return arbol
 
     def arbol_defectos_por_gravedad(self):
-        """Retorna un ArbolBinarioBusqueda con todos los defectos de muestras cerradas
-        indexados por su gravedad (1 a 5).
-        Permite recuperar defectos críticos rápidamente con arbol.buscar_todos(5)."""
-        arbol = ArbolBinarioBusqueda(permitir_duplicados=True)
+        """Retorna un ArbolAVL con los defectos de las muestras cerradas, indexados
+        por gravedad (1 a 5). Como hay a lo sumo 5 claves, el árbol tiene a lo sumo
+        5 nodos. Los críticos se obtienen con arbol.buscar(5)."""
+        arbol = ArbolAVL()
         for muestra in self._muestras_cerradas():
             for defecto in muestra.defectos:
-                arbol.insertar(defecto, clave=defecto.gravedad)
+                arbol.insertar(defecto.gravedad, defecto)
         return arbol
 
     def __repr__(self):
