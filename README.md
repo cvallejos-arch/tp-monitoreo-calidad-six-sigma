@@ -175,8 +175,9 @@ Las tres interfaces están **separadas del dominio**, como pide la consigna: sol
 
 **Estructuras de datos propias:**
 - **Nodo** (`nodo.py`): guarda un `dato` y la referencia `siguiente`.
-- **ListaEnlazada** (`lista_enlazada.py`): lista simple con `inicio`, `fin` y tamaño. Todos sus datos son de un mismo tipo. Implementa `__len__` y `__iter__` (con `yield`), así que funciona con `for`, `map`, `filter` y `sum`.
+- **ListaEnlazada** (`lista_enlazada.py`): lista simple con `inicio`, `fin` y tamaño. Todos sus datos son de un mismo tipo. Implementa `__len__` y `__iter__` (con `yield`), así que funciona con `for`, `map`, `filter` y `sum`. Incluye algoritmos **recursivos** (Unidad 7): `longitud_recursiva()`, `buscar_recursivo()`, `contar_recursivo()`, `a_lista_recursiva()` e `invertir_recursivo()`.
 - **Pila** (`pila.py`, LIFO) y **Cola** (`cola.py`, FIFO): usan una `ListaEnlazada` por dentro. La pila tiene `push`, `pop`, `peek`, `isEmpty` y `size`. La cola tiene `put`, `get`, `front`, `qsize`, `empty` y `full`, y acepta un `maxsize` opcional.
+- **NodoArbol** (`nodo_arbol.py`) y **ArbolBinarioBusqueda** (`arbol_binario.py`, ABB / BST - Unidad 8): árbol binario de búsqueda 100 % recursivo con inserción, búsqueda, altura, recorridos (in-orden, pre-orden, post-orden), mínimo, máximo y eliminación. Indexa defectos de muestras cerradas en `Lote.arbol_defectos_por_gravedad()`, muestras en `Lote.arbol_muestras_por_cantidad()` y lotes en `Empresa.arbol_lotes_por_produccion()`.
 
 **Soporte:**
 - **`EstadoMuestra` y `EstadoLote`:** enums con los estados posibles.
@@ -245,13 +246,15 @@ La consigna deja **fuera de alcance la interfaz gráfica y la persistencia**. La
 | **`*args` / `**kwargs`** | `crear_registrar_procedimiento(tipo, **kwargs)`, filtros `listar_*(**filtros)`, `CalidadError(**detalles)`, `Clase(**data)` al cargar JSON, `simular_lote(..., **opciones)` |
 | **Tuplas** | Retornos inmutables: `defectos`, `muestras`, `historial_estados`, `pendientes_en_orden()` |
 | **Nodos y lista enlazada** | `Nodo` y `ListaEnlazada` (simple, con `inicio`/`fin`), con un solo tipo de dato por lista |
+| **Recursividad (Unidad 7)** | En `ListaEnlazada`: `longitud_recursiva`, `buscar_recursivo`, `contar_recursivo`, `a_lista_recursiva`, `invertir_recursivo`; y en todas las operaciones del árbol |
+| **Árbol Binario de Búsqueda (Unidad 8)** | `NodoArbol` y `ArbolBinarioBusqueda` (ABB): inserción, búsqueda, recorridos (in/pre/post), altura, min, max, eliminación. Indexa defectos en `Lote` y lotes en `Empresa` |
 | **Pila (LIFO)** | Historial de estados de cada `Muestra`: el `peek()` es el estado actual |
 | **Cola (FIFO)** | Muestras pendientes del `Lote`: se inspeccionan en orden de creación |
 | **Generadores (`yield`)** | `ListaEnlazada.__iter__` recorre los nodos sin copiarlos |
 | **Serialización** | JSON (`dump`/`load`, `to_dict()`, `Clase(**data)`) para los reportes; pickle (`dump`/`load` en modo binario) para la empresa completa; `with open(...)` |
 | **Bibliotecas** | `datetime` (`date`, `timedelta`), `random` (`Random`, `randint`, `uniform`, `choice`), `json`, `pickle`, `uuid`, `abc` |
 | **Entrada de datos** | `input()` con validación y reintento en `consola.py` |
-| **Tests con pytest** | 387 tests, con fixtures (`conftest.py`), `parametrize`, `monkeypatch` (para simular el `input()` del usuario) y `tmp_path` (archivos temporales) |
+| **Tests con pytest** | 411 tests, con fixtures (`conftest.py`), `parametrize`, `monkeypatch` (para simular el `input()` del usuario) y `tmp_path` (archivos temporales) |
 
 ---
 

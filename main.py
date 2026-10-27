@@ -544,6 +544,47 @@ def main():
         print(f"   La muestra sigue {lote_carlos.muestras[0].estado.value}: "
               f"se validó antes de iniciar la inspección")
 
+    # ============================================================
+    #  15. RECURSIVIDAD Y ÁRBOLES BINARIOS (UNIDADES 7 Y 8 EDP)
+    # ============================================================
+    separador("15. RECURSIVIDAD Y ÁRBOLES BINARIOS DE BÚSQUEDA")
+
+    # 15.1 Recursividad sobre ListaEnlazada (Unidad 7)
+    print("15.1 Métodos recursivos sobre ListaEnlazada:")
+    from classes.lista_enlazada import ListaEnlazada
+    lista_demo = ListaEnlazada()
+    for val in [10, 25, 5, 25, 40]:
+        lista_demo.insertar_final(val)
+    print(f"  Lista original: {lista_demo}")
+    print(f"  Longitud calculada recursivamente: {lista_demo.longitud_recursiva()}")
+    print(f"  Buscar recursivo 25: {lista_demo.buscar_recursivo(25)}")
+    print(f"  Buscar recursivo 99: {lista_demo.buscar_recursivo(99)}")
+    print(f"  Contar recursivo apariciones de 25: {lista_demo.contar_recursivo(25)}")
+    print(f"  Conversión a lista estándar recursiva: {lista_demo.a_lista_recursiva()}")
+    lista_demo.invertir_recursivo()
+    print(f"  Lista invertida recursivamente: {lista_demo}")
+
+    # 15.2 Árbol Binario de Búsqueda indexando el dominio (Unidad 8)
+    print("\n15.2 Árbol Binario de Búsqueda (ABB) indexando defectos por gravedad:")
+    arbol_defectos = lote.arbol_defectos_por_gravedad()
+    print(f"  Árbol creado: {arbol_defectos}")
+    print(f"  Altura del árbol: {arbol_defectos.altura()}")
+    print(f"  Defectos ordenados por gravedad (recorrido in-orden):")
+    for d in arbol_defectos.recorrido_in_orden():
+        print(f"    - [{d.tipo}] {d.descripcion} (gravedad {d.gravedad})")
+
+    criticos = arbol_defectos.buscar_todos(5)
+    print(f"  Búsqueda rápida de defectos críticos (gravedad 5) en el árbol: {len(criticos)} encontrados")
+
+    # Árbol de lotes por producción
+    print("\n15.3 Árbol Binario de Búsqueda de Lotes por Volumen de Producción:")
+    arbol_lotes = empresa.arbol_lotes_por_produccion()
+    print(f"  Lote con menor producción (mínimo del árbol): {arbol_lotes.minimo().nombre_componentes} ({arbol_lotes.minimo().cantidad_fabricada} un.)")
+    print(f"  Lote con mayor producción (máximo del árbol): {arbol_lotes.maximo().nombre_componentes} ({arbol_lotes.maximo().cantidad_fabricada} un.)")
+    print("  Recorrido in-orden de lotes por producción creciente:")
+    for l in arbol_lotes.recorrido_in_orden():
+        print(f"    - {l.nombre_componentes}: {l.cantidad_fabricada} piezas")
+
     print(f"\n{'='*60}")
     print("  [OK] EJECUCION COMPLETA - TODAS LAS FUNCIONALIDADES DEMOSTRADAS")
     print(f"{'='*60}")

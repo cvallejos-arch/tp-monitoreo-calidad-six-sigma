@@ -148,3 +148,21 @@ Para mostrar en vivo la repetibilidad y el criterio del 5% con datos pseudoaleat
 py -c "from classes.empresa import Empresa; from classes.simulador import Simulador; from classes.proc_visual import ProcedimientoVisual; from datetime import date; emp = Empresa(); l5 = emp.crear_registrar_lote('B5', 200); [emp.crear_registrar_muestra(10, l5) for _ in range(20)]; p = emp.crear_registrar_profesional('Ana'); emp.crear_registrar_certificacion(p, 'ISO', date(2025,1,1), date(2025,12,31)); eq = emp.crear_registrar_equipo('Visual', date(2025,6,1)); pr = emp.crear_registrar_procedimiento(ProcedimientoVisual, 5, 'Visual', 'ISO'); Simulador(5).simular_lote(emp, l5, p, eq, pr, date(2025,6,15), prob_defecto=0.15); print('Semilla 5:', l5.porcentaje_no_conforme(), '% ->', l5.decidir().value)"
 ```
 *(Salida directa: `Semilla 5: 5.0 % -> Aprobado`)*
+
+---
+
+## 6. Recursividad y Árboles Binarios de Búsqueda (Unidades 7 y 8 EDP)
+
+En caso de que el profesor pregunte cómo y dónde se aplican la recursividad y los árboles:
+
+1. **Recursividad en `ListaEnlazada` (Unidad 7):**
+   - Métodos: `longitud_recursiva()`, `buscar_recursivo(valor)`, `contar_recursivo(valor)`, `a_lista_recursiva()` e `invertir_recursivo()`.
+   - Patrón: método público wrapper que delega en una función recursiva pura sobre nodos con **caso base** (nodo es `None` o último nodo) y **caso recursivo** (llamada con `nodo.get_siguiente()`).
+
+2. **Árbol Binario de Búsqueda (ABB / BST - Unidad 8):**
+   - Clases: [`NodoArbol`](file:///c:/Users/TRONCHETTI/GIT/EDP/PROJECT/tp-monitoreo-calidad-six-sigma/classes/nodo_arbol.py) y [`ArbolBinarioBusqueda`](file:///c:/Users/TRONCHETTI/GIT/EDP/PROJECT/tp-monitoreo-calidad-six-sigma/classes/arbol_binario.py).
+   - Operaciones 100 % recursivas: `insertar(dato, clave)`, `buscar(clave)`, `contiene(clave)`, `altura()`, `minimo()`, `maximo()`, `eliminar(clave)` (3 casos clásicos, con sucesor in-order) y recorridos (`recorrido_in_orden()`, `recorrido_pre_orden()`, `recorrido_post_orden()`).
+   - **Aplicación al dominio:**
+     - `Lote.arbol_defectos_por_gravedad()`: indexa defectos por gravedad (1 a 5). Permite búsqueda $O(\log n)$ de defectos críticos (`arbol.buscar_todos(5)`).
+     - `Lote.arbol_muestras_por_cantidad()`: indexa muestras por tamaño de piezas.
+     - `Empresa.arbol_lotes_por_produccion()`: indexa lotes por cantidad fabricada para ordenarlos y consultarlos por volumen.

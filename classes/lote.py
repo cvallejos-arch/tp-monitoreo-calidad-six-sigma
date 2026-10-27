@@ -4,6 +4,7 @@ from classes.estado_muestra import EstadoMuestra
 from classes.validacion import validar_cantidad, validar_nombre_tecnico
 from classes.excepciones import TransicionIlegalError
 from classes.cola import Cola
+from classes.arbol_binario import ArbolBinarioBusqueda
 import uuid
 
 
@@ -180,6 +181,26 @@ class Lote:
                 conteo[defecto.tipo] = conteo.get(defecto.tipo, 0) + 1
 
         return conteo
+
+    # --- Indexación con Árbol Binario de Búsqueda (Unidad 8 EDP) ---
+
+    def arbol_muestras_por_cantidad(self):
+        """Retorna un ArbolBinarioBusqueda con las muestras del lote indexadas
+        por cantidad. Permite búsquedas rápidas y recorridos ordenados por tamaño."""
+        arbol = ArbolBinarioBusqueda(permitir_duplicados=True)
+        for muestra in self._muestras.values():
+            arbol.insertar(muestra, clave=muestra.cantidad)
+        return arbol
+
+    def arbol_defectos_por_gravedad(self):
+        """Retorna un ArbolBinarioBusqueda con todos los defectos de muestras cerradas
+        indexados por su gravedad (1 a 5).
+        Permite recuperar defectos críticos rápidamente con arbol.buscar_todos(5)."""
+        arbol = ArbolBinarioBusqueda(permitir_duplicados=True)
+        for muestra in self._muestras_cerradas():
+            for defecto in muestra.defectos:
+                arbol.insertar(defecto, clave=defecto.gravedad)
+        return arbol
 
     def __repr__(self):
         return (

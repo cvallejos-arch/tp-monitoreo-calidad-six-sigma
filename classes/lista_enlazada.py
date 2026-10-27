@@ -112,6 +112,72 @@ class ListaEnlazada:
 
         return False
 
+    # --- Métodos recursivos (Unidad 7 EDP) ---
+
+    def longitud_recursiva(self):
+        """Calcula la cantidad de elementos de forma recursiva."""
+        return self._longitud_nodo(self._inicio)
+
+    def _longitud_nodo(self, nodo):
+        """Caso base: nodo es None -> 0. Caso recursivo: 1 + longitud(siguiente)."""
+        if nodo is None:
+            return 0
+        return 1 + self._longitud_nodo(nodo.get_siguiente())
+
+    def buscar_recursivo(self, valor):
+        """Retorna el primer nodo cuyo dato sea igual a valor de forma recursiva, o None."""
+        return self._buscar_nodo(self._inicio, valor)
+
+    def _buscar_nodo(self, nodo, valor):
+        """Caso base 1: nodo es None -> no encontrado.
+        Caso base 2: coincide el dato -> encontrado.
+        Caso recursivo: buscar en nodo.siguiente."""
+        if nodo is None:
+            return None
+        if nodo.get_dato() == valor:
+            return nodo
+        return self._buscar_nodo(nodo.get_siguiente(), valor)
+
+    def contar_recursivo(self, valor):
+        """Cuenta recursivamente cuántas veces aparece un valor en la lista."""
+        return self._contar_nodo(self._inicio, valor)
+
+    def _contar_nodo(self, nodo, valor):
+        """Caso base: nodo es None -> 0.
+        Caso recursivo: (1 si coincide else 0) + contar en siguiente."""
+        if nodo is None:
+            return 0
+        coincide = 1 if nodo.get_dato() == valor else 0
+        return coincide + self._contar_nodo(nodo.get_siguiente(), valor)
+
+    def a_lista_recursiva(self):
+        """Construye recursivamente una lista estándar de Python con los datos."""
+        return self._a_lista_nodo(self._inicio)
+
+    def _a_lista_nodo(self, nodo):
+        """Caso base: nodo es None -> [].
+        Caso recursivo: [nodo.dato] + lista(nodo.siguiente)."""
+        if nodo is None:
+            return []
+        return [nodo.get_dato()] + self._a_lista_nodo(nodo.get_siguiente())
+
+    def invertir_recursivo(self):
+        """Invierte los enlaces de la lista de forma recursiva y actualiza inicio y fin."""
+        if self._inicio is None or self._inicio.get_siguiente() is None:
+            return
+        self._fin = self._inicio
+        self._inicio = self._invertir_nodo(self._inicio)
+
+    def _invertir_nodo(self, nodo):
+        """Caso base: último nodo de la lista -> pasa a ser la nueva cabeza.
+        Caso recursivo: invertir el resto y apuntar el siguiente nodo hacia este."""
+        if nodo is None or nodo.get_siguiente() is None:
+            return nodo
+        nueva_cabeza = self._invertir_nodo(nodo.get_siguiente())
+        nodo.get_siguiente().set_siguiente(nodo)
+        nodo.set_siguiente(None)
+        return nueva_cabeza
+
     # Protocolos de Python 
 
     def __len__(self):
