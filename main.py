@@ -1,10 +1,21 @@
-"""Simulación completa (end-to-end) del sistema de monitoreo de calidad:
-registra un lote con sus muestras, valida requisitos, ejecuta inspecciones
-visuales y dimensionales, decide el lote y muestra reportes y consultas.
-Además provoca a propósito cada error del sistema para mostrar dónde y por
-qué se rechaza cada operación. Al final simula lotes con observaciones al
-azar usando una semilla, para que cada caso se pueda repetir."""
+"""Demo guionada (end-to-end) del sistema de monitoreo de calidad.
 
+Recorre el sistema en el orden de una inspección real y, en cada etapa, provoca
+a propósito los errores posibles para mostrar QUÉ se rechaza, POR QUÉ y DÓNDE
+se lanza la excepción. Siempre da el mismo resultado (fechas fijas y semillas).
+
+Secciones:
+  1. Registro (y errores en los datos de entrada)
+  2. Validaciones antes de inspeccionar
+  3. Inspecciones del lote 1
+  4. Reglas de cierre y decisión de los lotes
+  5. Estructuras de datos: recursión, árboles AVL y cola de prioridad (heap)
+  6. Serialización (JSON y pickle)
+  7. Simulación aleatoria con semilla
+  8. Resumen final
+"""
+
+import os
 from datetime import date, timedelta
 
 from classes.empresa import Empresa
@@ -12,26 +23,35 @@ from classes.procedimiento import Procedimiento
 from classes.proc_dimensional import ProcedimientoDimensional
 from classes.proc_visual import ProcedimientoVisual
 from classes.certificacion import Certificacion
+from classes.defecto import DefectoDimensional
 from classes.observacion_visual import ObservacionVisual
 from classes.observacion_dimensional import ObservacionDimensional
+from classes.lista_enlazada import ListaEnlazada
+from classes.cola import Cola
+from classes.cola_prioridad import ColaPrioridad
+from classes.arbol_avl import ArbolAVL
 from classes.simulador import Simulador
-from classes.excepciones import (
-    CalidadError,
-    TransicionIlegalError,
-    CertificacionNoVigenteError,
-    EquipoNoAptoError,
-    DatosInvalidosError,
-    EstructuraVaciaError,
-    InspeccionInvalidaError,
-)
+from classes.excepciones import CalidadError
 from classes.estado_lote import EstadoLote
 from classes.estado_muestra import EstadoMuestra
 
 
+# ============================================================
+#  FUNCIONES AUXILIARES
+# ============================================================
+
 def separador(titulo):
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  {titulo}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
+
+
+def subtitulo(texto):
+    print(f"\n--- {texto} ---")
+
+
+def id_corto(objeto):
+    return str(objeto.id)[:8]
 
 
 def texto_historial(historial):
@@ -39,8 +59,27 @@ def texto_historial(historial):
     return " -> ".join(map(lambda estado: estado.value, historial))
 
 
+def intentar(descripcion, donde, accion, errores=(CalidadError,), mostrar_detalles=False):
+    """Ejecuta una acción que DEBE ser rechazada y muestra el error.
+
+    `accion` es una función sin parámetros (normalmente una lambda): las funciones
+    son valores y se pueden pasar como argumento. Como todas las excepciones propias
+    heredan de CalidadError, un solo except las captura a todas."""
+    print(f"{descripcion}...")
+    try:
+        accion()
+    except errores as e:
+        print(f"   [X] RECHAZADO con {type(e).__name__}: {e}")
+        print(f"       Se lanza en: {donde}")
+        if mostrar_detalles and getattr(e, "detalles", None):
+            print(f"       Detalles (**detalles): {e.detalles}")
+        return e
+    print("   [!] No fue rechazado (no debería pasar)")
+    return None
+
+
 def inspeccionar(empresa, muestra, profesional, equipo, procedimiento, fecha, observaciones):
-    """Lanza, ejecuta y cierra una inspección completa (para no repetir código)."""
+    """Lanza, ejecuta y cierra una inspección completa."""
     insp = empresa.lanzar_inspeccion(muestra, profesional, equipo, procedimiento, fecha)
     insp.ejecutar(observaciones)
     insp.cerrar()
@@ -52,455 +91,358 @@ def main():
     fecha_hoy = date(2025, 6, 15)
 
     # ============================================================
-    #  1. REGISTRAR LOTE Y MUESTRAS (COLA DE PENDIENTES)
+    #  1. REGISTRO
     # ============================================================
-    separador("1. REGISTRAR LOTE Y MUESTRAS")
+    separador("1. REGISTRO DE LOTES, PROFESIONALES, EQUIPOS Y PROCEDIMIENTOS")
 
+    # Lote 1: 1000 tornillos en 20 muestras de 50. El lote crea sus muestras
+    # (composición) y las pone en su cola de pendientes (FIFO).
     lote = empresa.crear_registrar_lote("Tornillos", 1000)
-    print(f"Lote creado: {lote}")
-
-    # Crear 20 muestras de 50 unidades cada una (composicion: el lote crea sus muestras)
     muestras = []
-    for i in range(20):
+    for _ in range(20):
         muestras.append(empresa.crear_registrar_muestra(50, lote))
-    print(f"Se crearon {len(muestras)} muestras en el lote")
-
     capacidad_usada = sum(map(lambda m: m.cantidad, muestras))
-    print(f"Capacidad usada: {capacidad_usada}/{lote.cantidad_fabricada}")
-
-    # El lote encola cada muestra al crearla (Cola: primero en entrar, primero en salir)
+    print(f"Lote '{lote.nombre_componentes}' [{id_corto(lote)}]: {len(muestras)} muestras, "
+          f"capacidad usada {capacidad_usada}/{lote.cantidad_fabricada}")
     print(f"Muestras pendientes en la cola: {len(lote.pendientes_en_orden())}")
-    print(f"Siguiente a inspeccionar (front de la cola): {lote.siguiente_muestra_pendiente().id}")  # front: primera en entrar
 
-    # 1a. El lote ya usó sus 1000 unidades: Lote.crear_muestra controla que la
-    # suma de las muestras no supere la cantidad fabricada.
-    print("\n1a. Intentando crear una muestra más (el lote ya está completo)...")
-    try:
-        empresa.crear_registrar_muestra(1, lote)
-    except TransicionIlegalError as e:
-        print(f"   [X] RECHAZADO: {e}")
-        print(f"       Detalles del error: {e.detalles}")
-
-    # 1b. validar_cantidad exige un entero mayor a 0.
-    print("\n1b. Intentando crear un lote con cantidad 0...")
-    try:
-        empresa.crear_registrar_lote("Tuercas", 0)
-    except DatosInvalidosError as e:
-        print(f"   [X] RECHAZADO: {e}")
-
-    # ============================================================
-    #  2. REGISTRAR PROFESIONALES CON CERTIFICACIONES
-    # ============================================================
-    separador("2. REGISTRAR PROFESIONALES CON CERTIFICACIONES")
-
+    # Profesionales
     prof_ana = empresa.crear_registrar_profesional("Ana")
     prof_ana.agregar_certificacion(Certificacion("ISO", date(2025, 1, 1), date(2025, 12, 31)))
-    # Seguridad está vencida desde 2023: la usamos en el caso 5b
     prof_ana.agregar_certificacion(Certificacion("Seguridad", date(2023, 1, 1), date(2023, 12, 31)))
-    print(f"Profesional: {prof_ana}")
+    prof_bruno = empresa.crear_registrar_profesional("Bruno")
+    prof_bruno.agregar_certificacion(Certificacion("ISO", date(2025, 1, 1), fecha_hoy))  # vence hoy
+    prof_carlos = empresa.crear_registrar_profesional("Carlos")                         # sin certificaciones
+    vigentes_ana = ", ".join(map(lambda c: c.nombre, prof_ana.certificaciones_vigentes(fecha_hoy)))
+    print(f"Ana: ISO vigente y Seguridad vencida (vigentes hoy: {vigentes_ana})")
+    print(f"Bruno: ISO que vence justo hoy ({fecha_hoy})")
+    print("Carlos: sin certificaciones")
 
-    vigentes = prof_ana.certificaciones_vigentes(fecha_hoy)
-    nombres_vigentes = ", ".join(map(lambda c: c.nombre, vigentes))
-    print(f"  Certificaciones vigentes al {fecha_hoy}: {nombres_vigentes}")
-
-    prof_carlos = empresa.crear_registrar_profesional("Carlos")
-    # Carlos NO tiene certificación ISO
-    print(f"Profesional: {prof_carlos}")
-
-    # ============================================================
-    #  3. REGISTRAR EQUIPOS CALIBRADOS
-    # ============================================================
-    separador("3. REGISTRAR EQUIPOS CALIBRADOS")
-
-    # Equipo.esta_calibrado acepta de 0 a 182 días entre la calibración y la
-    # inspección, contando los extremos. Probamos los dos lados del borde.
-    equipo_visual = empresa.crear_registrar_equipo(
-        "Visual", fecha_hoy - timedelta(days=100)
-    )
-    equipo_borde = empresa.crear_registrar_equipo(
-        "Visual", fecha_hoy - timedelta(days=182)
-    )
-    equipo_dimensional = empresa.crear_registrar_equipo(
-        "Dimensional", fecha_hoy - timedelta(days=180)
-    )
-    equipo_vencido = empresa.crear_registrar_equipo(
-        "Visual", fecha_hoy - timedelta(days=183)
-    )
-
+    # Equipos: la calibración vale 182 días (los extremos se incluyen)
+    equipo_visual = empresa.crear_registrar_equipo("Visual", fecha_hoy - timedelta(days=100))
+    equipo_borde = empresa.crear_registrar_equipo("Visual", fecha_hoy - timedelta(days=182))
+    equipo_dimensional = empresa.crear_registrar_equipo("Dimensional", fecha_hoy - timedelta(days=180))
+    equipo_vencido = empresa.crear_registrar_equipo("Visual", fecha_hoy - timedelta(days=183))
+    equipo_futuro = empresa.crear_registrar_equipo("Visual", fecha_hoy + timedelta(days=10))
     equipos = {
-        "Equipo visual (100 días)": equipo_visual,
-        "Equipo en el borde (182 días)": equipo_borde,
-        "Equipo dimensional (180 días)": equipo_dimensional,
-        "Equipo vencido (183 días)": equipo_vencido,
+        "Visual, calibrado hace 100 días": equipo_visual,
+        "Visual, calibrado hace 182 días (límite)": equipo_borde,
+        "Dimensional, calibrado hace 180 días": equipo_dimensional,
+        "Visual, calibrado hace 183 días": equipo_vencido,
+        "Visual, calibrado dentro de 10 días": equipo_futuro,
     }
     for nombre, equipo in equipos.items():
-        print(f"{nombre}: {equipo}")
-        print(f"  Calibrado a fecha {fecha_hoy}? {equipo.esta_calibrado(fecha_hoy)}")
+        print(f"Equipo {nombre}: ¿calibrado hoy? {equipo.esta_calibrado(fecha_hoy)}")
 
-    # ============================================================
-    #  4. CREAR PROCEDIMIENTOS (POLIMORFISMO)
-    # ============================================================
-    separador("4. CREAR PROCEDIMIENTOS (POLIMORFISMO)")
-
-    # Usando **kwargs via Empresa
+    # Procedimientos (polimorfismo: misma interfaz, distinto criterio de evaluación)
     proc_visual = empresa.crear_registrar_procedimiento(
-        ProcedimientoVisual,
-        limite_gravedad_acumulada=5,
-        categoria_equipo_requerida="Visual",
-        certificacion_requerida="ISO"
-    )
-    print(f"Procedimiento visual (con cert ISO): {proc_visual}")
-
+        ProcedimientoVisual, limite_gravedad_acumulada=5, certificacion_requerida="ISO")
     proc_dimensional = empresa.crear_registrar_procedimiento(
-        ProcedimientoDimensional,
-        limite_gravedad_acumulada=10,
-        unidad_medida="mm"
-    )
-    print(f"Procedimiento dimensional: {proc_dimensional} (unidad: {proc_dimensional.unidad_medida})")
-
-    # Procedimiento que pide la certificación de Seguridad (para el caso 5b)
+        ProcedimientoDimensional, limite_gravedad_acumulada=10, unidad_medida="mm")   # **kwargs
     proc_seguridad = empresa.crear_registrar_procedimiento(
-        ProcedimientoVisual,
-        limite_gravedad_acumulada=5,
-        certificacion_requerida="Seguridad"
-    )
-    print(f"Procedimiento visual (con cert Seguridad): {proc_seguridad}")
+        ProcedimientoVisual, limite_gravedad_acumulada=5, certificacion_requerida="Seguridad")
+    print("Procedimientos: visual (límite 5, pide ISO), dimensional (límite 10, en mm) "
+          "y visual (pide Seguridad)")
 
-    # 4a. Procedimiento es abstracta (ABC con evaluar() abstracto): Python no deja
-    # crearla. Es un TypeError de Python, no una excepción nuestra.
-    print("\n4a. Intentando crear un Procedimiento genérico (clase abstracta)...")
-    try:
-        Procedimiento(limite_gravedad_acumulada=5, categoria_equipo_requerida="Visual")
-    except TypeError as e:
-        print(f"   [X] RECHAZADO: {e}")
-
-    # ============================================================
-    #  5. DEMOSTRAR VALIDACIONES QUE RECHAZAN
-    # ============================================================
-    separador("5. DEMOSTRAR VALIDACIONES QUE RECHAZAN")
-
-    # Todas estas validaciones están en el constructor de Inspeccion y se hacen
-    # ANTES de iniciar la inspección: si fallan, la muestra no cambia de estado.
-
-    # 5a. Profesional sin certificación requerida
-    print("5a. Intentando inspección con profesional sin certificación...")
-    try:
-        empresa.lanzar_inspeccion(
-            muestras[0], prof_carlos, equipo_visual, proc_visual, fecha_hoy
-        )
-    except CertificacionNoVigenteError as e:
-        print(f"   [X] RECHAZADO: {e}")
-        print(f"       Detalles del error: {e.detalles}")
-        print(f"   Estado muestra: {muestras[0].estado.value} (no cambio)")
-
-    # 5b. Ana tiene la certificación de Seguridad, pero venció en 2023
-    print("\n5b. Intentando inspección con certificación vencida...")
-    try:
-        empresa.lanzar_inspeccion(
-            muestras[0], prof_ana, equipo_visual, proc_seguridad, fecha_hoy
-        )
-    except CertificacionNoVigenteError as e:
-        print(f"   [X] RECHAZADO: {e}")
-
-    # 5c. Equipo calibrado hace 183 días (uno más que el máximo)
-    print("\n5c. Intentando inspección con equipo vencido...")
-    try:
-        empresa.lanzar_inspeccion(
-            muestras[0], prof_ana, equipo_vencido, proc_visual, fecha_hoy
-        )
-    except EquipoNoAptoError as e:
-        print(f"   [X] RECHAZADO: {e}")
-        print(f"       Detalles del error: {e.detalles}")
-
-    # 5d. Equipo de categoría incompatible
-    print("\n5d. Intentando inspección con equipo de categoría incompatible...")
-    try:
-        empresa.lanzar_inspeccion(
-            muestras[0], prof_ana, equipo_dimensional, proc_visual, fecha_hoy
-        )
-    except EquipoNoAptoError as e:
-        print(f"   [X] RECHAZADO: {e}")
-        print(f"       Detalles del error: {e.detalles}")
-
-    # 5e. Fallan dos cosas a la vez (certificación y equipo). El constructor
-    # valida en orden: fecha, estado de la muestra, certificación, compatibilidad,
-    # calibración. Por eso sale solo el primer error.
-    print("\n5e. Intentando inspección que falla por certificación Y por equipo...")
-    try:
-        empresa.lanzar_inspeccion(
-            muestras[0], prof_carlos, equipo_vencido, proc_visual, fecha_hoy
-        )
-    except CalidadError as e:
-        print(f"   [X] RECHAZADO con {type(e).__name__}: {e}")
-
-    # 5f. Observación con gravedad fuera del rango 1 a 5
-    print("\n5f. Intentando crear una observación con gravedad 6...")
-    try:
-        ObservacionVisual("Raya profunda", True, 6)
-    except DatosInvalidosError as e:
-        print(f"   [X] RECHAZADO: {e}")
-
-    print(f"\nDespués de todos los intentos, la muestra 0 sigue: {muestras[0].estado.value}")
+    subtitulo("Errores en los datos de entrada")
+    intentar("1a. Crear una muestra más (el lote ya usó sus 1000 unidades)",
+             "Lote.crear_muestra",
+             lambda: empresa.crear_registrar_muestra(1, lote))
+    intentar("1b. Crear un lote con cantidad 0",
+             "validar_cantidad (validacion.py), desde Lote.__init__",
+             lambda: empresa.crear_registrar_lote("Tuercas", 0))
+    intentar("1c. Crear una certificación que termina antes de empezar",
+             "validar_rango_fechas (validacion.py), desde Certificacion.__init__",
+             lambda: Certificacion("ISO", date(2025, 12, 31), date(2025, 1, 1)))
+    intentar("1d. Registrar un profesional llamado 'Ana 2' (los nombres de persona son solo letras)",
+             "validar_texto (validacion.py), desde Profesional.__init__",
+             lambda: empresa.crear_registrar_profesional("Ana 2"))
+    print("    En cambio, los nombres técnicos aceptan números: "
+          f"{Certificacion('ISO 9001', date(2025, 1, 1), date(2025, 12, 31)).nombre!r} es válido")
+    intentar("1e. Crear un Procedimiento genérico (es una clase abstracta)",
+             "Python (ABC), porque evaluar() es un @abstractmethod",
+             lambda: Procedimiento(limite_gravedad_acumulada=5, categoria_equipo_requerida="Visual"),
+             errores=(TypeError,))
 
     # ============================================================
-    #  6. EJECUTAR INSPECCIONES VISUALES (POLIMORFISMO + COLA)
+    #  2. VALIDACIONES ANTES DE INSPECCIONAR
     # ============================================================
-    separador("6. EJECUTAR INSPECCIONES VISUALES")
+    separador("2. VALIDACIONES ANTES DE INSPECCIONAR")
 
-    # Muestra 0: no conforme (defecto crítico). Se toma del frente de la cola.
-    insp_0 = empresa.lanzar_siguiente_inspeccion(  # toma la muestra del front de la cola (FIFO)
-        lote, prof_ana, equipo_visual, proc_visual, fecha_hoy
-    )
-    obs_visual_0 = [
+    # El constructor de Inspeccion valida, en este orden: fecha, estado de la muestra,
+    # certificación, compatibilidad del equipo y calibración. Si algo falla, lanza la
+    # excepción ANTES de tocar la muestra, que sigue PENDIENTE.
+    m0 = muestras[0]
+    intentar("2a. Inspeccionar con un profesional sin la certificación que pide el procedimiento",
+             "Inspeccion.__init__",
+             lambda: empresa.lanzar_inspeccion(m0, prof_carlos, equipo_visual, proc_visual, fecha_hoy),
+             mostrar_detalles=True)
+    intentar("2b. Inspeccionar con una certificación vencida (la de Seguridad de Ana es de 2023)",
+             "Inspeccion.__init__ (usa Certificacion.es_vigente)",
+             lambda: empresa.lanzar_inspeccion(m0, prof_ana, equipo_visual, proc_seguridad, fecha_hoy))
+    intentar("2c. Inspeccionar con un equipo calibrado hace 183 días (uno más que el máximo)",
+             "Inspeccion.__init__ (usa Equipo.esta_calibrado)",
+             lambda: empresa.lanzar_inspeccion(m0, prof_ana, equipo_vencido, proc_visual, fecha_hoy))
+    intentar("2d. Inspeccionar con un equipo de otra categoría (dimensional para un procedimiento visual)",
+             "Inspeccion.__init__ (usa Equipo.es_compatible)",
+             lambda: empresa.lanzar_inspeccion(m0, prof_ana, equipo_dimensional, proc_visual, fecha_hoy))
+    intentar("2e. Inspeccionar con un equipo cuya calibración es POSTERIOR a la inspección",
+             "Inspeccion.__init__ (Equipo.esta_calibrado exige calibración <= fecha de inspección)",
+             lambda: empresa.lanzar_inspeccion(m0, prof_ana, equipo_futuro, proc_visual, fecha_hoy))
+    intentar("2f. Fallan la certificación Y el equipo a la vez: sale solo el primer error del orden",
+             "Inspeccion.__init__",
+             lambda: empresa.lanzar_inspeccion(m0, prof_carlos, equipo_vencido, proc_visual, fecha_hoy))
+    intentar("2g. Inspeccionar con una fecha escrita como texto en lugar de date",
+             "Inspeccion.__init__",
+             lambda: empresa.lanzar_inspeccion(m0, prof_ana, equipo_visual, proc_visual, "2025-06-15"))
+    print(f"\nDespués de todos los intentos, la muestra 0 sigue {m0.estado.value} "
+          f"y sin inspección asignada: {m0.inspeccion is None}")
+
+    # ============================================================
+    #  3. INSPECCIONES DEL LOTE 1
+    # ============================================================
+    separador("3. INSPECCIONES DEL LOTE 1")
+
+    subtitulo("Muestra 0: inspección visual con un defecto crítico")
+    insp_0 = empresa.lanzar_siguiente_inspeccion(          # toma la muestra del front de la cola
+        lote, prof_ana, equipo_visual, proc_visual, fecha_hoy)
+    defectos_0 = insp_0.ejecutar([
         ObservacionVisual("Fractura completa en pieza", True, 5),
         ObservacionVisual("Decoloración leve", True, 1),
-    ]
-    defectos_0 = insp_0.ejecutar(obs_visual_0)
-    print(f"Muestra 0 — Defectos encontrados: {len(defectos_0)}")
-    for d in defectos_0:
-        print(f"  - {d}")
+    ])
     insp_0.cerrar()
-    print(f"Estado muestra 0: {muestras[0].estado.value}")
-    print(f"Historial de estados (pila): {texto_historial(muestras[0].historial_estados)}")  # del bottom al top
-    print(f"Reporte: {muestras[0].reporte}")
+    for d in defectos_0:
+        print(f"  Defecto: {d.descripcion} (gravedad {d.gravedad})")
+    print(f"Estado: {m0.estado.value} (tiene un defecto crítico)")
+    print(f"Historial de estados (pila, del bottom al top): {texto_historial(m0.historial_estados)}")
+    print(f"Se generó el reporte [{id_corto(m0.reporte)}] con copia de {len(m0.reporte.defectos)} defectos")
 
-    # 6a. La muestra 0 ya está cerrada: no puede tener otra inspección
-    print("\n6a. Intentando inspeccionar de nuevo la muestra 0...")
-    try:
-        empresa.lanzar_inspeccion(
-            muestras[0], prof_ana, equipo_visual, proc_visual, fecha_hoy
-        )
-    except TransicionIlegalError as e:
-        print(f"   [X] RECHAZADO: {e}")
+    subtitulo("Lo que no se puede hacer con una muestra cerrada")
+    intentar("3a. Inspeccionar de nuevo la muestra 0",
+             "Inspeccion.__init__ (la muestra ya no está PENDIENTE)",
+             lambda: empresa.lanzar_inspeccion(m0, prof_ana, equipo_visual, proc_visual, fecha_hoy))
+    intentar("3b. Volver a ejecutar la inspección ya cerrada",
+             "Inspeccion.ejecutar",
+             lambda: insp_0.ejecutar([ObservacionVisual("Raya", True, 1)]))
+    intentar("3c. Agregarle un defecto a la muestra cerrada",
+             "Muestra.agregar_defecto (solo se puede EN_INSPECCION)",
+             lambda: m0.agregar_defecto(defectos_0[0]))
+    intentar("3d. Decidir el lote con 19 muestras todavía pendientes",
+             "Lote.decidir",
+             lambda: lote.decidir())
 
-    # 6b. Una inspección cerrada no se puede volver a ejecutar ni cerrar
-    print("\n6b. Intentando ejecutar una inspección ya cerrada...")
-    try:
-        insp_0.ejecutar([ObservacionVisual("Raya", True, 1)])
-    except InspeccionInvalidaError as e:
-        print(f"   [X] RECHAZADO: {e}")
-
-    print("\n6c. Intentando cerrar dos veces la misma inspección...")
-    try:
-        insp_0.cerrar()
-    except InspeccionInvalidaError as e:
-        print(f"   [X] RECHAZADO: {e}")
-
-    # 6d. Muestra.agregar_defecto solo funciona con la muestra EN_INSPECCION
-    print("\n6d. Intentando agregar un defecto a una muestra ya cerrada...")
-    try:
-        muestras[0].agregar_defecto(defectos_0[0])
-    except TransicionIlegalError as e:
-        print(f"   [X] RECHAZADO: {e}")
-
-    # 6e. Lote.decidir exige que todas las muestras estén cerradas
-    print("\n6e. Intentando decidir el lote con 19 muestras todavía pendientes...")
-    try:
-        lote.decidir()
-    except TransicionIlegalError as e:
-        print(f"   [X] RECHAZADO: {e}")
-
-    # Muestras 1 a 18: conformes. La cola entrega las pendientes en orden de creación.
-    for i in range(1, 19):
-        insp = empresa.lanzar_siguiente_inspeccion(  # toma la muestra del front de la cola (FIFO)
-            lote, prof_ana, equipo_visual, proc_visual, fecha_hoy
-        )
+    subtitulo("Muestras 1 a 18: la cola las entrega en orden de creación")
+    for _ in range(18):
+        insp = empresa.lanzar_siguiente_inspeccion(        # toma la muestra del front de la cola
+            lote, prof_ana, equipo_visual, proc_visual, fecha_hoy)
         insp.ejecutar([ObservacionVisual("Sin defectos observados", False)])
         insp.cerrar()
+    print(f"Inspeccionadas y conformes. Pendientes en la cola: {len(lote.pendientes_en_orden())}")
 
-    print("\nMuestras 1-18 inspeccionadas en orden de la cola y conformes")
-    print(f"Muestras pendientes en la cola: {len(lote.pendientes_en_orden())}")
-
-    # ============================================================
-    #  7. EJECUTAR INSPECCIÓN DIMENSIONAL (POLIMORFISMO)
-    # ============================================================
-    separador("7. EJECUTAR INSPECCIÓN DIMENSIONAL")
-
-    # Muestra 19: la última que queda en la cola de pendientes.
-    # La gravedad se calcula según cuánto se pasa de la tolerancia
-    # (exceso = desviación / rango): 0.5 -> gravedad 2, 1.0 -> gravedad 3.
-    insp_19 = empresa.lanzar_siguiente_inspeccion(  # toma la muestra del front de la cola (FIFO)
-        lote, prof_ana, equipo_dimensional, proc_dimensional, fecha_hoy
-    )
-    obs_dim = [
+    subtitulo("Muestra 19: inspección dimensional (otro procedimiento, mismo evaluar())")
+    # La gravedad depende de cuánto se pasa la medida: exceso = desviación / ancho del rango
+    insp_19 = empresa.lanzar_siguiente_inspeccion(
+        lote, prof_ana, equipo_dimensional, proc_dimensional, fecha_hoy)
+    defectos_19 = insp_19.ejecutar([
         ObservacionDimensional(10.5, 9.0, 10.0, "Pieza fuera de tolerancia superior"),
         ObservacionDimensional(9.5, 9.0, 10.0, "Pieza dentro de tolerancia"),
         ObservacionDimensional(8.0, 9.0, 10.0, "Pieza fuera de tolerancia inferior"),
-    ]
-    defectos_19 = insp_19.ejecutar(obs_dim)
-    print(f"Muestra 19 — Defectos dimensionales: {len(defectos_19)}")
-    for d in defectos_19:
-        print(f"  - {d}")
+    ])
     insp_19.cerrar()
-    print(f"Suma de gravedades: {muestras[19].suma_gravedades()} (límite 10)")
-    print(f"Estado muestra 19: {muestras[19].estado.value}")
+    for d in defectos_19:
+        print(f"  Defecto: medido {d.valor_medido} en [{d.tolerancia_min}, {d.tolerancia_max}] "
+              f"{d.unidad} -> gravedad {d.gravedad}")
+    print(f"Suma de gravedades {muestras[19].suma_gravedades()} <= límite 10: {muestras[19].estado.value}")
 
-    print("\nIntentando inspeccionar con la cola de pendientes vacía...")
-    try:
-        empresa.lanzar_siguiente_inspeccion(
-            lote, prof_ana, equipo_visual, proc_visual, fecha_hoy
-        )
-    except EstructuraVaciaError as e:
-        print(f"   [X] RECHAZADO: {e}")
+    intentar("3e. Pedir la siguiente inspección con la cola vacía",
+             "Empresa.lanzar_siguiente_inspeccion",
+             lambda: empresa.lanzar_siguiente_inspeccion(
+                 lote, prof_ana, equipo_visual, proc_visual, fecha_hoy))
 
     # ============================================================
-    #  8. CONSULTAS DEL LOTE (SIN EFECTOS SECUNDARIOS)
+    #  4. REGLAS DE CIERRE Y DECISIÓN DE LOS LOTES
     # ============================================================
-    separador("8. CONSULTAS DEL LOTE")
+    separador("4. REGLAS DE CIERRE Y DECISIÓN DE LOS LOTES")
 
-    print(f"Todas cerradas: {lote.todas_cerradas()}")
-    print(f"Porcentaje no conforme: {lote.porcentaje_no_conforme()}%")
-    print(f"Total defectos críticos: {lote.total_defectos_criticos()}")
-    print("Conteo por tipo:")
+    subtitulo("Lote 1: consultas (solo miran muestras cerradas) y decisión")
+    print(f"Todas cerradas: {lote.todas_cerradas()} | No conforme: {lote.porcentaje_no_conforme()}% "
+          f"| Defectos críticos: {lote.total_defectos_criticos()}")
     for tipo, cantidad in lote.conteo_por_tipo().items():
-        print(f"  - {tipo}: {cantidad}")
-
-    # ============================================================
-    #  9. DECIDIR EL LOTE
-    # ============================================================
-    separador("9. DECIDIR EL LOTE")
-
-    # 1 no conforme de 20 = 5 % exacto. La regla rechaza solo si supera el 5 %.
-    estado_final = lote.decidir()
-    print(f"Decisión del lote: {estado_final.value}")
-
+        print(f"  Defectos {tipo}: {cantidad}")
     no_conformes = list(filter(lambda m: m.estado == EstadoMuestra.NO_CONFORME, muestras))
-    print(f"  Muestras no conformes: {len(no_conformes)}/{len(muestras)}")
+    print(f"{len(no_conformes)}/{len(muestras)} no conformes = exactamente 5 %: "
+          f"se rechaza solo si SUPERA el 5 % -> {lote.decidir().value}")
+    intentar("4a. Decidir el lote otra vez (la decisión es final)",
+             "Lote.decidir",
+             lambda: lote.decidir())
 
-    # Intentar decidir de nuevo
-    print("\nIntentando decidir el lote de nuevo...")
-    try:
-        lote.decidir()
-    except TransicionIlegalError as e:
-        print(f"   [X] RECHAZADO (decision final): {e}")
-
-    # ============================================================
-    #  10. SEGUNDO LOTE: REGLAS DE CIERRE Y LOTE RECHAZADO
-    # ============================================================
-    separador("10. SEGUNDO LOTE: REGLAS DE CIERRE Y LOTE RECHAZADO")
-
-    # Muestra.cerrar marca NO_CONFORME si hay un defecto de gravedad 5
-    # o si la suma de gravedades SUPERA el límite (5 en el procedimiento visual).
+    subtitulo("Lote 2: un caso por cada regla de cierre (límite de gravedad 5)")
     lote_2 = empresa.crear_registrar_lote("Arandelas", 40)
     m_igual = empresa.crear_registrar_muestra(10, lote_2)
     m_supera = empresa.crear_registrar_muestra(10, lote_2)
     m_critica = empresa.crear_registrar_muestra(10, lote_2)
     m_limpia = empresa.crear_registrar_muestra(10, lote_2)
 
-    # 10a. Suma igual al límite (2 + 3 = 5): queda CONFORME porque la regla es "supera"
-    inspeccionar(empresa, m_igual, prof_ana, equipo_borde, proc_visual, fecha_hoy,
+    # Bruno (certificación que vence HOY) con el equipo de 182 días: los dos límites se aceptan
+    inspeccionar(empresa, m_igual, prof_bruno, equipo_borde, proc_visual, fecha_hoy,
                  [ObservacionVisual("Raya superficial", True, 2),
                   ObservacionVisual("Mancha", True, 3)])
-    print(f"10a. Suma igual al límite ({m_igual.suma_gravedades()} = 5): {m_igual.estado.value}")
-    print("     (usamos el equipo calibrado hace 182 días: el borde se acepta)")
-
-    # 10b. Suma mayor al límite (3 + 3 = 6) sin ningún defecto crítico
-    inspeccionar(empresa, m_supera, prof_ana, equipo_visual, proc_visual, fecha_hoy,
-                 [ObservacionVisual("Raya", True, 3),
-                  ObservacionVisual("Abolladura", True, 3)])
-    print(f"10b. Suma mayor al límite ({m_supera.suma_gravedades()} > 5): {m_supera.estado.value}")
-
-    # 10c. Un solo defecto crítico: alcanza para que sea NO_CONFORME
-    inspeccionar(empresa, m_critica, prof_ana, equipo_visual, proc_visual, fecha_hoy,
+    print(f"Suma igual al límite (2 + 3 = 5): {m_igual.estado.value}  "
+          f"<- inspeccionó Bruno, con certificación que vence hoy y equipo de 182 días")
+    inspeccionar(empresa, m_supera, prof_ana, equipo_visual, proc_visual, date(2025, 6, 20),
+                 [ObservacionVisual("Raya", True, 3), ObservacionVisual("Abolladura", True, 3)])
+    print(f"Suma mayor al límite (3 + 3 = 6), sin crítico: {m_supera.estado.value}")
+    inspeccionar(empresa, m_critica, prof_ana, equipo_visual, proc_visual, date(2025, 7, 2),
                  [ObservacionVisual("Fisura completa", True, 5)])
-    print(f"10c. Un defecto crítico (gravedad 5): {m_critica.estado.value}")
-
-    # 10d. Sin defectos: CONFORME y sin reporte
+    print(f"Un solo defecto crítico (gravedad 5): {m_critica.estado.value}")
     inspeccionar(empresa, m_limpia, prof_ana, equipo_visual, proc_visual, fecha_hoy,
                  [ObservacionVisual("Sin defectos observados", False)])
-    print(f"10d. Sin defectos: {m_limpia.estado.value} | Reporte: {m_limpia.reporte}")
+    print(f"Sin defectos: {m_limpia.estado.value} y sin reporte ({m_limpia.reporte})")
+    print(f"2 de 4 no conformes = {lote_2.porcentaje_no_conforme()}% -> {lote_2.decidir().value}")
 
-    # 10e. 2 no conformes de 4 = 50 %: supera el 5 %, el lote se rechaza
-    print(f"\nPorcentaje no conforme del lote 2: {lote_2.porcentaje_no_conforme()}%")
-    print(f"Decisión del lote 2: {lote_2.decidir().value}")
-
-    # ============================================================
-    #  11. RESUMEN FINAL
-    # ============================================================
-    separador("11. RESUMEN FINAL")
-
-    print(f"Lote: {lote}")
-    print(f"Lote 2: {lote_2}")
-    print("\nReportes de desviación generados:")
-    reportes = empresa.reportes()
-    for r in reportes:
-        print(f"  - Reporte {r.id}:")
-        print(f"    Muestra: {r.muestra_id}")
-        print(f"    Profesional: {r.profesional_id}")
-        print(f"    Fecha: {r.fecha}")
-        print(f"    Historial: {texto_historial(r.historial_estados)}")
-        print(f"    Defectos ({len(r.defectos)}):")
-        for d in r.defectos:
-            print(f"      - {d}")
-
-    print("\nConsultas dinámicas en Empresa con **kwargs (filtros):")
-    lotes_aprobados = empresa.listar_lotes(estado=EstadoLote.APROBADO)
-    print(f"  - Lotes con estado APROBADO: {len(lotes_aprobados)}")
-    lotes_rechazados = empresa.listar_lotes(estado=EstadoLote.RECHAZADO)
-    print(f"  - Lotes con estado RECHAZADO: {len(lotes_rechazados)}")
-    muestras_no_conf = empresa.listar_muestras(estado=EstadoMuestra.NO_CONFORME)
-    print(f"  - Muestras con estado NO_CONFORME: {len(muestras_no_conf)}")
-    inspecciones_cerradas = empresa.listar_inspecciones(cerrada=True)
-    print(f"  - Inspecciones cerradas: {len(inspecciones_cerradas)}")
-
-    print("\nIntentando filtrar por un atributo inexistente...")
-    try:
-        empresa.listar_lotes(estdo=EstadoLote.APROBADO)
-    except DatosInvalidosError as e:
-        print(f"   [X] RECHAZADO: {e}")
-
-    print("\nResumen del registro de la empresa:")
-    for categoria, cantidad in empresa.resumen().items():
-        print(f"  - {categoria}: {cantidad}")
+    subtitulo("Defectos inválidos (regla 3)")
+    intentar("4b. Crear una observación con gravedad 6 (tiene que ser de 1 a 5)",
+             "validar_rango_entero (validacion.py), desde ObservacionVisual.__init__",
+             lambda: ObservacionVisual("Raya profunda", True, 6))
+    intentar("4c. Crear un defecto dimensional con la medida DENTRO de la tolerancia",
+             "DefectoDimensional.__init__ (un defecto dimensional exige estar fuera de rango)",
+             lambda: DefectoDimensional("Pieza", 2, 9.5, 9.0, 10.0))
 
     # ============================================================
-    #  12. SERIALIZACIÓN JSON DE LOS REPORTES
+    #  5. ESTRUCTURAS DE DATOS: RECURSIÓN, ÁRBOLES AVL Y HEAP
     # ============================================================
-    separador("12. SERIALIZACIÓN JSON DE LOS REPORTES")
+    separador("5. ESTRUCTURAS DE DATOS: RECURSIÓN, ÁRBOLES AVL Y HEAP")
 
+    subtitulo("5.1 Recursión frente a iteración (lista enlazada)")
+    lista = ListaEnlazada()
+    for valor in [10, 25, 5, 25, 40]:
+        lista.insertar_final(valor)
+    print(f"Lista: {lista}")
+    print(f"  Largo   -> iterativo len(lista) = {len(lista)} | "
+          f"recursivo longitud_recursiva() = {lista.longitud_recursiva()}")
+    print(f"  Buscar 25 -> iterativo buscar() = {lista.buscar(25)} | "
+          f"recursivo buscar_recursivo() = {lista.buscar_recursivo(25)}")
+    print(f"  Contar 25 (recursivo): {lista.contar_recursivo(25)}")
+    lista.invertir_recursivo()
+    print(f"  Invertida recursivamente: {lista}")
+    print("  Cada versión recursiva tiene un caso base (nodo None) y un caso recursivo "
+          "(el resto de la lista)")
+
+    subtitulo("5.2 Por qué AVL: datos que llegan ordenados")
+    arbol = ArbolAVL()
+    for clave in range(1, 16):
+        arbol.insertar(clave, f"dato {clave}")
+    print("Claves 1 a 15 insertadas EN ORDEN (como llegan las fechas de calibración o de reportes):")
+    print(f"  Árbol de búsqueda sin balance: quedaría como una cadena de altura 15 (buscar es O(n))")
+    print(f"  Árbol AVL: altura {arbol.altura()}, balanceado = {arbol.esta_balanceado()} "
+          f"(buscar es O(log n) garantizado)")
+    print(f"  Búsqueda recursiva: buscar(11) = {arbol.buscar(11)} | buscar(99) = {arbol.buscar(99)}")
+
+    subtitulo("5.3 Rotaciones (vistas por niveles, con nuestra Cola)")
+    rotacion = ArbolAVL()
+    for clave in (10, 20, 30):
+        rotacion.insertar(clave, clave)
+    print(f"Insertar 10, 20, 30 (cargado a la derecha) -> rotación izquierda: {rotacion.niveles()}")
+    for clave in (40, 50):
+        rotacion.insertar(clave, clave)
+    print(f"Agregar 40 y 50 (otra rotación): {rotacion.niveles()}")
+
+    subtitulo("5.4 Equipos ordenados por fecha de calibración (AVL que se mantiene al día)")
+    vencidos = empresa.equipos_vencidos_al(fecha_hoy)
+    print(f"Equipos vencidos al {fecha_hoy}: "
+          f"{list(map(lambda e: f'{e.categoria} calibrado el {e.fecha_calibracion}', vencidos))}")
+    a_vencer = empresa.equipos_que_vencen_entre(fecha_hoy, fecha_hoy + timedelta(days=30))
+    print(f"Equipos que vencen en los próximos 30 días: "
+          f"{list(map(lambda e: f'{e.categoria} vence el {e.fecha_vencimiento}', a_vencer))}")
+    primero = empresa.equipo_que_vence_primero(fecha_hoy)
+    print(f"El equipo calibrado que vence primero: {primero.categoria} [{id_corto(primero)}], "
+          f"vence el {primero.fecha_vencimiento}")
+
+    subtitulo("5.5 Reportes entre dos fechas (búsqueda por rango en el AVL)")
+    for desde, hasta, mes in ((date(2025, 6, 1), date(2025, 6, 30), "junio"),
+                              (date(2025, 7, 1), date(2025, 7, 31), "julio")):
+        reportes_mes = empresa.reportes_entre(desde, hasta)
+        print(f"Reportes de {mes}: {list(map(lambda r: str(r.fecha), reportes_mes))}")
+
+    subtitulo("5.6 Otros índices AVL del dominio")
+    arbol_defectos = lote_2.arbol_defectos_por_gravedad()
+    print(f"Defectos del lote 2 por gravedad: {arbol_defectos} (claves {arbol_defectos.claves_in_orden()})")
+    print(f"  Críticos -> buscar(5): {list(map(lambda d: d.descripcion, arbol_defectos.buscar(5)))}")
+    print(f"  Graves   -> buscar_rango(3, 5): "
+          f"{list(map(lambda d: d.descripcion, arbol_defectos.buscar_rango(3, 5)))}")
+    arbol_lotes = empresa.arbol_lotes_por_produccion()
+    print(f"Lotes por producción (in-orden): "
+          f"{list(map(lambda l: f'{l.nombre_componentes} ({l.cantidad_fabricada})', arbol_lotes))}")
+
+    subtitulo("5.7 Cola de prioridad (max-heap): atender primero los reportes más graves")
+    # Como en la sala de urgencias del apunte: no sale el que llegó antes, sale el
+    # más grave. Prioridad = (gravedad máxima, suma de gravedades), una tupla.
+    cola_atencion = empresa.cola_atencion_reportes()
+    print(f"{len(cola_atencion)} reportes en la cola. Orden de atención:")
+    for reporte in cola_atencion.en_orden_de_prioridad():
+        print(f"  {reporte.fecha} | gravedad máxima {reporte.gravedad_maxima}, "
+              f"suma {reporte.suma_gravedades}")
+    print(f"Se atiende primero el del {cola_atencion.extraer_maximo().fecha}; "
+          f"quedan {len(cola_atencion)}")
+    pacientes = ColaPrioridad()
+    for paciente, prioridad in (("Esguince", 2), ("Fractura expuesta", 10), ("Fiebre alta", 7)):
+        pacientes.insertar(paciente, prioridad)
+    print(f"Ejemplo del apunte (llegan Esguince, Fractura expuesta, Fiebre alta): "
+          f"se atiende {pacientes.en_orden_de_prioridad()}")
+    while pacientes:
+        pacientes.extraer_maximo()
+    intentar("5a. Atender un paciente con la cola de prioridad vacía",
+             "ColaPrioridad.extraer_maximo",
+             lambda: pacientes.extraer_maximo())
+
+    subtitulo("5.8 Cola con capacidad máxima (operación full() de la cátedra)")
+    cola_chica = Cola(maxsize=2)
+    cola_chica.put("A")
+    cola_chica.put("B")
+    print(f"Cola con maxsize=2 después de 2 put: full() = {cola_chica.full()}")
+    intentar("5b. Agregar un tercer elemento",
+             "Cola.put",
+             lambda: cola_chica.put("C"))
+
+    # ============================================================
+    #  6. SERIALIZACIÓN (JSON Y PICKLE)
+    # ============================================================
+    separador("6. SERIALIZACIÓN (JSON Y PICKLE)")
+
+    subtitulo("JSON: los reportes de desviación, en un archivo legible")
     ruta_json = "reportes.json"
-    cantidad = empresa.exportar_reportes_json(ruta_json)  # to_dict() + json.dump
-    print(f"Se exportaron {cantidad} reporte(s) a '{ruta_json}' (archivo legible)")
+    cantidad = empresa.exportar_reportes_json(ruta_json)          # to_dict() + json.dump
+    reportes_cargados = Empresa.cargar_reportes_json(ruta_json)   # json.load + Clase(**data)
+    iguales = all(map(lambda par: par[0].to_dict() == par[1].to_dict(),
+                      zip(empresa.reportes(), reportes_cargados)))
+    print(f"Exportados {cantidad} reportes a '{ruta_json}' y cargados de vuelta. ¿Iguales? {iguales}")
 
-    reportes_cargados = Empresa.cargar_reportes_json(ruta_json)  # json.load + Clase(**data)
-    for r in reportes_cargados:
-        print(f"  - Reporte cargado: {r}")
-        print(f"    Defectos: {list(map(lambda d: d.descripcion, r.defectos))}")
-
-    iguales = all(map(
-        lambda par: par[0].to_dict() == par[1].to_dict(),
-        zip(empresa.reportes(), reportes_cargados)
-    ))
-    print(f"Los reportes cargados coinciden con los originales: {iguales}")
-
-    # ============================================================
-    #  13. SERIALIZACIÓN PICKLE DE TODA LA EMPRESA
-    # ============================================================
-    separador("13. SERIALIZACIÓN PICKLE DE TODA LA EMPRESA")
-
+    subtitulo("pickle: la empresa completa, para retomar el trabajo")
     ruta_pkl = "empresa.pkl"
-    empresa.guardar(ruta_pkl)  # pickle.dump con "wb"
-    print(f"Empresa completa guardada en '{ruta_pkl}' (archivo binario)")
+    empresa.guardar(ruta_pkl)                                     # pickle.dump con "wb"
+    cargada = Empresa.cargar(ruta_pkl)                            # pickle.load con "rb"
+    m0_cargada = cargada.obtener_muestra(m0.id)
+    print(f"Guardada en '{ruta_pkl}' y cargada. ¿Es otro objeto? {cargada is not empresa} | "
+          f"¿Mismo contenido? {cargada.resumen() == empresa.resumen()}")
+    print(f"La muestra 0 recuperada conserva su pila: {texto_historial(m0_cargada.historial_estados)}")
+    print(f"Y el índice AVL de equipos: {len(cargada.equipos_vencidos_al(fecha_hoy))} equipo vencido")
 
-    empresa_cargada = Empresa.cargar(ruta_pkl)  # pickle.load con "rb"
-    print(f"Empresa cargada. ¿Es otro objeto? {empresa_cargada is not empresa}")
-    print(f"¿Mismo contenido? {empresa_cargada.resumen() == empresa.resumen()}")
-
-    lote_cargado = empresa_cargada.obtener_lote(lote.id)
-    print(f"Lote recuperado: estado {lote_cargado.estado.value}, "
-          f"{len(lote_cargado.muestras)} muestras")
-    muestra_0 = empresa_cargada.obtener_muestra(muestras[0].id)
-    print(f"Historial de la muestra 0 recuperado: {texto_historial(muestra_0.historial_estados)}")
+    ruta_invalida = "archivo_invalido.pkl"
+    with open(ruta_invalida, "w", encoding="utf-8") as f:
+        f.write("esto no es una empresa")
+    intentar("6a. Cargar un archivo que no es un pickle de una Empresa",
+             "Empresa.cargar (convierte el error de pickle con raise ... from e)",
+             lambda: Empresa.cargar(ruta_invalida))
+    os.remove(ruta_invalida)
 
     # ============================================================
-    #  14. SIMULACIÓN ALEATORIA (CON SEMILLA)
+    #  7. SIMULACIÓN ALEATORIA CON SEMILLA
     # ============================================================
-    separador("14. SIMULACIÓN ALEATORIA (CON SEMILLA)")
+    separador("7. SIMULACIÓN ALEATORIA CON SEMILLA")
 
     # El Simulador inventa las observaciones al azar; las reglas del dominio no
     # cambian. Con la misma semilla se repite exactamente el mismo caso.
-    print("Ejemplo: 5 observaciones visuales al azar con la semilla 7 "
-          "(probabilidad de defecto 0.5):")
+    print("5 observaciones visuales al azar con la semilla 7 (probabilidad de defecto 0.5):")
     for obs in Simulador(7).observaciones_visuales(5, prob_defecto=0.5):
         detalle = f"gravedad {obs.gravedad}" if obs.defecto_detectado else "sin defecto"
         print(f"  - {obs.descripcion}: {detalle}")
@@ -514,82 +456,55 @@ def main():
                                         proc_visual, fecha_hoy, prob_defecto=0.15)
         return lote_sim
 
-    print("\nLote de 20 muestras, probabilidad de defecto 0.15, límite de gravedad 5:")
+    print("\nLotes de 20 muestras, probabilidad de defecto 0.15, límite de gravedad 5:")
     lotes_simulados = {}
     for semilla in (5, 1):
         lote_sim = simular(semilla)
         no_conf = len(list(filter(lambda m: m.estado == EstadoMuestra.NO_CONFORME,
                                   lote_sim.muestras)))
-        porcentaje = lote_sim.porcentaje_no_conforme()
-        print(f"  Semilla {semilla}: {no_conf}/20 no conformes ({porcentaje}%) "
+        print(f"  Semilla {semilla}: {no_conf}/20 no conformes ({lote_sim.porcentaje_no_conforme()}%) "
               f"-> {lote_sim.decidir().value}")
         lotes_simulados[semilla] = lote_sim
-    print("  (semilla 5: exactamente 5 % se aprueba; semilla 1: 10 % supera el 5 % y se rechaza)")
 
-    # Reproducibilidad: misma semilla, mismos estados muestra por muestra
-    repetido = simular(5)
     estados = lambda lote_x: list(map(lambda m: m.estado, lote_x.muestras))
-    print(f"\nRepitiendo la semilla 5: ¿mismo resultado muestra por muestra? "
-          f"{estados(repetido) == estados(lotes_simulados[5])}")
-
-    # La simulación respeta las validaciones: Carlos no tiene la certificación ISO
-    print("\n14a. Intentando simular con un profesional sin certificación...")
-    lote_carlos = empresa.crear_registrar_lote("Remaches", 10)
-    empresa.crear_registrar_muestra(10, lote_carlos)
-    try:
-        Simulador(1).simular_lote(empresa, lote_carlos, prof_carlos, equipo_visual,
-                                  proc_visual, fecha_hoy)
-    except CertificacionNoVigenteError as e:
-        print(f"   [X] RECHAZADO: {e}")
-        print(f"   La muestra sigue {lote_carlos.muestras[0].estado.value}: "
-              f"se validó antes de iniciar la inspección")
+    print(f"Repitiendo la semilla 5: ¿mismo resultado muestra por muestra? "
+          f"{estados(simular(5)) == estados(lotes_simulados[5])}")
+    print("Las validaciones se aplican igual que a mano: simular con Carlos daría "
+          "CertificacionNoVigenteError (caso 2a)")
 
     # ============================================================
-    #  15. RECURSIVIDAD Y ÁRBOLES BINARIOS (UNIDADES 7 Y 8 EDP)
+    #  8. RESUMEN FINAL
     # ============================================================
-    separador("15. RECURSIVIDAD Y ÁRBOLES BINARIOS DE BÚSQUEDA")
+    separador("8. RESUMEN FINAL")
 
-    # 15.1 Recursividad sobre ListaEnlazada (Unidad 7)
-    print("15.1 Métodos recursivos sobre ListaEnlazada:")
-    from classes.lista_enlazada import ListaEnlazada
-    lista_demo = ListaEnlazada()
-    for val in [10, 25, 5, 25, 40]:
-        lista_demo.insertar_final(val)
-    print(f"  Lista original: {lista_demo}")
-    print(f"  Longitud calculada recursivamente: {lista_demo.longitud_recursiva()}")
-    print(f"  Buscar recursivo 25: {lista_demo.buscar_recursivo(25)}")
-    print(f"  Buscar recursivo 99: {lista_demo.buscar_recursivo(99)}")
-    print(f"  Contar recursivo apariciones de 25: {lista_demo.contar_recursivo(25)}")
-    print(f"  Conversión a lista estándar recursiva: {lista_demo.a_lista_recursiva()}")
-    lista_demo.invertir_recursivo()
-    print(f"  Lista invertida recursivamente: {lista_demo}")
+    print(f"Lote 1 '{lote.nombre_componentes}': {lote.estado.value} | "
+          f"Lote 2 '{lote_2.nombre_componentes}': {lote_2.estado.value}")
 
-    # 15.2 Árbol AVL indexando el dominio
-    print("\n15.2 Árbol AVL indexando defectos por gravedad:")
-    arbol_defectos = lote.arbol_defectos_por_gravedad()
-    print(f"  Árbol creado: {arbol_defectos}")
-    print(f"  Altura del árbol: {arbol_defectos.altura()}")
-    print(f"  Defectos ordenados por gravedad (recorrido in-orden):")
-    for d in arbol_defectos.recorrido_in_orden():
-        print(f"    - [{d.tipo}] {d.descripcion} (gravedad {d.gravedad})")
+    print("\nReportes de desviación (uno por cada muestra no conforme):")
+    for r in empresa.reportes()[:3]:
+        print(f"  [{id_corto(r)}] {r.fecha} | muestra [{str(r.muestra_id)[:8]}] | "
+              f"{texto_historial(r.historial_estados)}")
+        for d in r.defectos:
+            print(f"      - {d.descripcion} (gravedad {d.gravedad})")
+    print(f"  ... y {len(empresa.reportes()) - 3} más de los lotes simulados")
 
-    criticos = arbol_defectos.buscar(5)
-    print(f"  Búsqueda de defectos críticos (gravedad 5) en el árbol: {len(criticos)} encontrados")
+    print("\nConsultas con filtros **kwargs:")
+    print(f"  Lotes APROBADOS: {len(empresa.listar_lotes(estado=EstadoLote.APROBADO))} | "
+          f"RECHAZADOS: {len(empresa.listar_lotes(estado=EstadoLote.RECHAZADO))}")
+    print(f"  Muestras NO_CONFORME: {len(empresa.listar_muestras(estado=EstadoMuestra.NO_CONFORME))} | "
+          f"Inspecciones cerradas: {len(empresa.listar_inspecciones(cerrada=True))}")
+    print(f"  Equipos visuales: {len(empresa.listar_equipos(categoria='Visual'))}")
+    intentar("8a. Filtrar por un atributo que no existe ('estdo')",
+             "Empresa._filtrar",
+             lambda: empresa.listar_lotes(estdo=EstadoLote.APROBADO))
 
-    # Árbol de lotes por producción
-    print("\n15.3 Árbol AVL de lotes por volumen de producción:")
-    arbol_lotes = empresa.arbol_lotes_por_produccion()
-    menor = arbol_lotes.minimo()[0]   # minimo()/maximo() devuelven los datos de esa clave
-    mayor = arbol_lotes.maximo()[0]
-    print(f"  Lote con menor producción (mínimo del árbol): {menor.nombre_componentes} ({menor.cantidad_fabricada} un.)")
-    print(f"  Lote con mayor producción (máximo del árbol): {mayor.nombre_componentes} ({mayor.cantidad_fabricada} un.)")
-    print("  Recorrido in-orden de lotes por producción creciente:")
-    for l in arbol_lotes.recorrido_in_orden():
-        print(f"    - {l.nombre_componentes}: {l.cantidad_fabricada} piezas")
+    print("\nRegistro de la empresa:")
+    for categoria, cantidad in empresa.resumen().items():
+        print(f"  - {categoria}: {cantidad}")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("  [OK] EJECUCION COMPLETA - TODAS LAS FUNCIONALIDADES DEMOSTRADAS")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
 
 if __name__ == "__main__":

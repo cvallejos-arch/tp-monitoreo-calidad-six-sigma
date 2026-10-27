@@ -8,6 +8,7 @@ from classes.empresa import Empresa
 from classes.proc_visual import ProcedimientoVisual
 from classes.proc_dimensional import ProcedimientoDimensional
 from classes.certificacion import Certificacion
+from classes.equipo import Equipo
 from classes.observacion_visual import ObservacionVisual
 from classes.observacion_dimensional import ObservacionDimensional
 from classes.estado_muestra import EstadoMuestra
@@ -540,7 +541,7 @@ class App:
             (1, 1, "gravedad", "Defectos por gravedad", "muestras cerradas · se cuentan con el árbol AVL", 140),
             (1, 2, "lotes", "% no conforme por lote", "de mayor a menor producción (in-orden del árbol AVL)", 140),
             (2, 0, "profesionales", "Inspecciones por profesional", "cantidad y defectos promedio por inspección", 140),
-            (2, 1, "equipos", "Calibración de equipos", "validez de 182 días", 140),
+            (2, 1, "equipos", "Calibración de equipos", "árbol AVL por fecha: el que vence primero, arriba", 140),
             (2, 2, "ultimas", "Últimas inspecciones", "las 5 más recientes", 140),
         )
         self.graficos = {}
@@ -642,15 +643,18 @@ class App:
             barras_horizontales(datos_prof, max_filas=5, margen_derecho=104))
 
         # --- Calibración de equipos: días de validez que les quedan ---
+        # equipos_por_calibracion() es el recorrido in-orden del árbol AVL de la
+        # empresa: del calibrado hace más tiempo (vence antes) al más reciente.
+        dias_validez = Equipo.DIAS_VALIDEZ_CALIBRACION
         filas_equipos = []
-        for equipo in e.listar_equipos():
-            restantes = 182 - (hoy - equipo.fecha_calibracion).days
+        for equipo in e.equipos_por_calibracion():
+            restantes = (equipo.fecha_vencimiento - hoy).days
             if not equipo.esta_calibrado(hoy):
                 color, texto = ROJO, "VENCIDO"
             else:
                 color, texto = (AMARILLO if restantes <= 30 else VERDE), f"{restantes} días"
             filas_equipos.append((f"{equipo.categoria} · {id_corto(equipo.id)}",
-                                  max(restantes, 0) / 182, color, texto))
+                                  min(max(restantes, 0) / dias_validez, 1), color, texto))
         self.graficos["equipos"].mostrar(barras_de_progreso(filas_equipos[:5]))
 
         # --- Últimas inspecciones ---
@@ -1178,18 +1182,36 @@ class App:
         pagina.columnconfigure((0, 1), weight=1, uniform="reportes")
         pagina.rowconfigure(0, weight=1)
 
-        marco, cuerpo = tarjeta(pagina, "Reportes", "uno por cada muestra no conforme")
+        marco, cuerpo = tarjeta(pagina, "Reportes",
+                                "en orden de atención (cola de prioridad: el más grave primero) "
+                                "· filtro por fechas con el árbol AVL")
         marco.grid(row=0, column=0, sticky="nsew", padx=6, pady=6)
         cuerpo.columnconfigure(0, weight=1)
-        cuerpo.rowconfigure(0, weight=1)
-        self.tabla_reportes = self._tabla(cuerpo, ("id", "muestra", "fecha", "defectos", "maxima"),
-                                          ("REPORTE", "MUESTRA", "FECHA", "DEFECTOS", "GRAV. MÁX."),
-                                          10, fila=0)
-        for col in ("id", "muestra", "fecha", "defectos", "maxima"):
-            self.tabla_reportes.column(col, width=88)
+        cuerpo.rowconfigure(1, weight=1)
+
+        # Filtro por período: usa Empresa.reportes_entre (búsqueda por rango en el AVL)
+        filtro = tk.Frame(cuerpo, bg=BLANCO)
+        filtro.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+        tk.Label(filtro, text="Desde", bg=BLANCO, fg=SUAVE, font=(FUENTE, 9)).pack(side="left")
+        self.rep_desde = ttk.Entry(filtro, width=11)
+        self.rep_desde.pack(side="left", padx=(4, 10))
+        tk.Label(filtro, text="Hasta", bg=BLANCO, fg=SUAVE, font=(FUENTE, 9)).pack(side="left")
+        self.rep_hasta = ttk.Entry(filtro, width=11)
+        self.rep_hasta.pack(side="left", padx=(4, 10))
+        boton(filtro, "Filtrar", self.filtrar_reportes, "secundario").pack(side="left")
+        boton(filtro, "Ver todos", self.ver_todos_los_reportes, "secundario").pack(side="left", padx=6)
+        self._filtro_reportes = None   # None = todos; si no, (desde, hasta)
+
+        columnas = ("turno", "id", "muestra", "fecha", "defectos", "maxima")
+        self.tabla_reportes = self._tabla(cuerpo, columnas,
+                                          ("TURNO", "REPORTE", "MUESTRA", "FECHA", "DEFECTOS", "GRAV. MÁX."),
+                                          10, fila=1)
+        for col in columnas:
+            self.tabla_reportes.column(col, width=80)
+        self.tabla_reportes.column("turno", width=56)
         self.tabla_reportes.tag_configure("critico", background=FONDO_ESTADO["NO_CONFORME"])
         self.tabla_reportes.bind("<<TreeviewSelect>>", lambda e: self.mostrar_reporte())
-        boton(cuerpo, "Exportar a JSON", self.exportar_json).grid(row=1, column=0, sticky="e", pady=(10, 0))
+        boton(cuerpo, "Exportar a JSON", self.exportar_json).grid(row=2, column=0, sticky="e", pady=(10, 0))
 
         marco, cuerpo = tarjeta(pagina, "Detalle del reporte")
         marco.grid(row=0, column=1, sticky="nsew", padx=6, pady=6)
@@ -1199,6 +1221,20 @@ class App:
         self.detalle_reporte.pack(fill="both", expand=True)
         self.detalle_reporte.tag_configure("titulo", font=(FUENTE, 12, "bold"), foreground=AZUL)
         self.detalle_reporte.tag_configure("critico", foreground=ROJO, font=("Consolas", 10, "bold"))
+
+    def filtrar_reportes(self):
+        """Muestra solo los reportes entre las dos fechas (los extremos se incluyen)."""
+        def accion():
+            desde = leer_fecha(self.rep_desde.get())
+            hasta = leer_fecha(self.rep_hasta.get())
+            self.empresa.reportes_entre(desde, hasta)   # valida que desde <= hasta
+            self._filtro_reportes = (desde, hasta)
+        self._ejecutar(accion, "Reportes filtrados por fecha")
+
+    def ver_todos_los_reportes(self):
+        self._filtro_reportes = None
+        self.refrescar()
+        self.estado.set("✔ Se muestran todos los reportes")
 
     def mostrar_reporte(self):
         seleccion = self.tabla_reportes.selection()
@@ -1340,14 +1376,18 @@ class App:
                 self.tabla_lotes.selection_set(fila)
         self.mostrar_muestras()
 
-        # Tabla de reportes (en rojo los que tienen un defecto crítico)
+        # Tabla de reportes: en el orden en que se atienden (cola de prioridad: el más
+        # grave primero) y, si hay un filtro, solo los del período (árbol AVL).
+        # En rojo los que tienen un defecto crítico.
         self.tabla_reportes.delete(*self.tabla_reportes.get_children())
         self._reportes_por_fila = {}
-        for r in e.reportes():
-            maxima = max(map(lambda d: d.gravedad, r.defectos)) if r.defectos else 0
-            fila = self.tabla_reportes.insert("", "end", tags=("critico",) if maxima == 5 else (),
-                                              values=(id_corto(r.id), id_corto(r.muestra_id), r.fecha,
-                                                      len(r.defectos), maxima))
+        filtro = self._filtro_reportes or (None, None)
+        cola = e.cola_atencion_reportes(*filtro)
+        for turno, r in enumerate(cola.en_orden_de_prioridad(), start=1):
+            fila = self.tabla_reportes.insert(
+                "", "end", tags=("critico",) if r.gravedad_maxima == 5 else (),
+                values=(turno, id_corto(r.id), id_corto(r.muestra_id), r.fecha,
+                        len(r.defectos), r.gravedad_maxima))
             self._reportes_por_fila[fila] = r
 
         # Resumen del registro (página Registro)

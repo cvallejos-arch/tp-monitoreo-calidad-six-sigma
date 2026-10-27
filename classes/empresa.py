@@ -10,6 +10,7 @@ from classes.equipo import Equipo
 from classes.procedimiento import Procedimiento
 from classes.reporte import Reporte
 from classes.arbol_avl import ArbolAVL
+from classes.cola_prioridad import ColaPrioridad
 from classes.excepciones import EstructuraVaciaError, DatosInvalidosError
 from classes.validacion import validar_fecha_tipo, validar_rango_fechas
 
@@ -218,6 +219,27 @@ class Empresa:
         ordenados por fecha. Por ejemplo, todos los rechazos de un mes."""
         validar_rango_fechas(desde, hasta)
         return self.arbol_reportes_por_fecha().buscar_rango(desde, hasta)
+
+    # --- Cola de prioridad (heap) ---
+
+    def cola_atencion_reportes(self, desde=None, hasta=None):
+        """Retorna una ColaPrioridad (max-heap) con los reportes de desviación, para
+        atenderlos del más grave al menos grave, como en una sala de urgencias.
+        Si se indican desde y hasta, solo entran los reportes de ese período.
+
+        Prioridad = (gravedad máxima, suma de gravedades): las tuplas se comparan
+        elemento a elemento, así que primero decide el defecto más grave (un crítico
+        va antes que todo) y, si empatan, la suma. Si también empatan, sale primero
+        el que llegó antes: por eso se insertan en orden de fecha (recorrido
+        in-orden del AVL de reportes)."""
+        if desde is None and hasta is None:
+            reportes = self.arbol_reportes_por_fecha().recorrido_in_orden()
+        else:
+            reportes = self.reportes_entre(desde, hasta)    # también vienen en orden de fecha
+        cola = ColaPrioridad()
+        for reporte in reportes:
+            cola.insertar(reporte, (reporte.gravedad_maxima, reporte.suma_gravedades))
+        return cola
 
     # --- Serialización JSON de reportes ---
 

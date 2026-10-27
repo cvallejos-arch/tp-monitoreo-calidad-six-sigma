@@ -225,3 +225,35 @@ class TestMenuPrincipal:
         salida = capsys.readouterr().out
         assert "Datos de ejemplo cargados" in salida
         assert "Capacidad usada: 200/200" in salida
+
+
+class TestAlertasYReportesPorFecha:
+    def test_alertas_de_calibracion(self, respuestas, empresa_ejemplo, capsys):
+        # fecha = hoy, avisar a 200 días: entran los dos equipos al día
+        respuestas("", "200")
+        consola.alertas_calibracion(empresa_ejemplo)
+        salida = capsys.readouterr().out
+        assert "Equipos VENCIDOS al" in salida and ": 1" in salida
+        assert "vencen en los próximos 200 días: 2" in salida
+        assert "vence primero" in salida
+
+    def test_reportes_en_orden_de_atencion(self, respuestas, empresa_ejemplo, capsys):
+        # Simular el lote con la semilla 1 (2 no conformes) y listar los reportes de hoy
+        respuestas("1", "1", "1", "1", "", "1", "0.15")
+        consola.simulacion_aleatoria(empresa_ejemplo)
+        capsys.readouterr()
+        respuestas("", "")
+        consola.reportes_por_fecha(empresa_ejemplo)
+        salida = capsys.readouterr().out
+        assert "2 reporte(s)" in salida
+        assert "  1. [" in salida and "  2. [" in salida
+
+    def test_reportes_con_fechas_invertidas(self, respuestas, empresa_ejemplo, capsys):
+        respuestas("2025-12-31", "2025-01-01")
+        consola.ejecutar_opcion(empresa_ejemplo, "15")
+        assert "DatosInvalidosError" in capsys.readouterr().out
+
+    def test_periodo_sin_reportes(self, respuestas, empresa_ejemplo, capsys):
+        respuestas("2000-01-01", "2000-12-31")
+        consola.reportes_por_fecha(empresa_ejemplo)
+        assert "No hay reportes" in capsys.readouterr().out
