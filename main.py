@@ -9,7 +9,7 @@ Secciones:
   2. Validaciones antes de inspeccionar
   3. Inspecciones del lote 1
   4. Reglas de cierre y decisión de los lotes
-  5. Estructuras de datos: recursión y árboles AVL
+  5. Estructuras de datos: recursión, árboles AVL y cola de prioridad (heap)
   6. Serialización (JSON y pickle)
   7. Simulación aleatoria con semilla
   8. Resumen final
@@ -28,6 +28,7 @@ from classes.observacion_visual import ObservacionVisual
 from classes.observacion_dimensional import ObservacionDimensional
 from classes.lista_enlazada import ListaEnlazada
 from classes.cola import Cola
+from classes.cola_prioridad import ColaPrioridad
 from classes.arbol_avl import ArbolAVL
 from classes.simulador import Simulador
 from classes.excepciones import CalidadError
@@ -308,9 +309,9 @@ def main():
              lambda: DefectoDimensional("Pieza", 2, 9.5, 9.0, 10.0))
 
     # ============================================================
-    #  5. ESTRUCTURAS DE DATOS: RECURSIÓN Y ÁRBOLES AVL
+    #  5. ESTRUCTURAS DE DATOS: RECURSIÓN, ÁRBOLES AVL Y HEAP
     # ============================================================
-    separador("5. ESTRUCTURAS DE DATOS: RECURSIÓN Y ÁRBOLES AVL")
+    separador("5. ESTRUCTURAS DE DATOS: RECURSIÓN, ÁRBOLES AVL Y HEAP")
 
     subtitulo("5.1 Recursión frente a iteración (lista enlazada)")
     lista = ListaEnlazada()
@@ -373,12 +374,33 @@ def main():
     print(f"Lotes por producción (in-orden): "
           f"{list(map(lambda l: f'{l.nombre_componentes} ({l.cantidad_fabricada})', arbol_lotes))}")
 
-    subtitulo("5.7 Cola con capacidad máxima (operación full() de la cátedra)")
+    subtitulo("5.7 Cola de prioridad (max-heap): atender primero los reportes más graves")
+    # Como en la sala de urgencias del apunte: no sale el que llegó antes, sale el
+    # más grave. Prioridad = (gravedad máxima, suma de gravedades), una tupla.
+    cola_atencion = empresa.cola_atencion_reportes()
+    print(f"{len(cola_atencion)} reportes en la cola. Orden de atención:")
+    for reporte in cola_atencion.en_orden_de_prioridad():
+        print(f"  {reporte.fecha} | gravedad máxima {reporte.gravedad_maxima}, "
+              f"suma {reporte.suma_gravedades}")
+    print(f"Se atiende primero el del {cola_atencion.extraer_maximo().fecha}; "
+          f"quedan {len(cola_atencion)}")
+    pacientes = ColaPrioridad()
+    for paciente, prioridad in (("Esguince", 2), ("Fractura expuesta", 10), ("Fiebre alta", 7)):
+        pacientes.insertar(paciente, prioridad)
+    print(f"Ejemplo del apunte (llegan Esguince, Fractura expuesta, Fiebre alta): "
+          f"se atiende {pacientes.en_orden_de_prioridad()}")
+    while pacientes:
+        pacientes.extraer_maximo()
+    intentar("5a. Atender un paciente con la cola de prioridad vacía",
+             "ColaPrioridad.extraer_maximo",
+             lambda: pacientes.extraer_maximo())
+
+    subtitulo("5.8 Cola con capacidad máxima (operación full() de la cátedra)")
     cola_chica = Cola(maxsize=2)
     cola_chica.put("A")
     cola_chica.put("B")
     print(f"Cola con maxsize=2 después de 2 put: full() = {cola_chica.full()}")
-    intentar("5a. Agregar un tercer elemento",
+    intentar("5b. Agregar un tercer elemento",
              "Cola.put",
              lambda: cola_chica.put("C"))
 

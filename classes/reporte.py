@@ -49,6 +49,15 @@ class Reporte:
     def historial_estados(self):
         return self._historial_estados
 
+    @property
+    def gravedad_maxima(self):
+        """La gravedad más alta entre sus defectos (5 = hay un crítico)."""
+        return max(map(lambda d: d.gravedad, self._defectos), default=0)
+
+    @property
+    def suma_gravedades(self):
+        return sum(map(lambda d: d.gravedad, self._defectos))
+
     # --- Serialización JSON ---
 
     def to_dict(self):
