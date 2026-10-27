@@ -44,6 +44,16 @@ class Lote:
         """Retorna una tupla inmutable de las muestras del lote."""
         return tuple(self._muestras.values())
 
+    @property
+    def capacidad_libre(self):
+        """Unidades que todavía se pueden asignar a muestras nuevas."""
+        return self._cantidad_fabricada - sum(map(lambda m: m.cantidad, self._muestras.values()))
+
+    def __contains__(self, muestra):
+        """Permite escribir `muestra in lote`: True si la muestra pertenece a este lote.
+        Busca por id en el diccionario de muestras (O(1))."""
+        return isinstance(muestra, Muestra) and muestra.id in self._muestras
+
     def crear_muestra(self, cantidad):
         """Crea una muestra que pertenece a este lote (composición).
         Valida que la capacidad no se exceda."""

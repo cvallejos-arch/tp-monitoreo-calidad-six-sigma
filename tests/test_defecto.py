@@ -51,3 +51,18 @@ class TestCopiaDefecto:
         assert copia.descripcion == original.descripcion
         assert copia.gravedad == original.gravedad
         assert copia is not original
+
+
+class TestComparacionDefectos:
+    def test_menor_es_el_menos_grave(self):
+        """__lt__ compara por gravedad."""
+        assert Defecto("VISUAL", "Raya", 2) < Defecto("VISUAL", "Fisura", 5)
+        assert not Defecto("VISUAL", "Fisura", 5) < Defecto("VISUAL", "Raya", 2)
+
+    def test_sorted_usa_lt(self):
+        defectos = [Defecto("VISUAL", "b", 3), Defecto("VISUAL", "a", 5), Defecto("VISUAL", "c", 1)]
+        assert list(map(lambda d: d.gravedad, sorted(defectos))) == [1, 3, 5]
+
+    def test_comparar_con_otra_cosa_da_error(self):
+        with pytest.raises(TypeError):
+            Defecto("VISUAL", "Raya", 2) < 5

@@ -8,7 +8,7 @@ from datetime import date
 import consola
 from classes.empresa import Empresa
 from classes.estado_muestra import EstadoMuestra
-from classes.excepciones import DatosInvalidosError
+from classes.excepciones import DatosInvalidosError, TransicionIlegalError
 
 
 @pytest.fixture
@@ -80,7 +80,7 @@ class TestCrearMuestras:
         lote = empresa_ejemplo.listar_lotes()[0]       # 200 unidades, ya usadas por 20 x 10
         nuevo = empresa_ejemplo.crear_registrar_lote("Tuercas", 100)
         respuestas("2", "6", "20")                     # lote 2, 6 muestras de 20 = 120 > 100
-        with pytest.raises(DatosInvalidosError):
+        with pytest.raises(TransicionIlegalError):     # lo controla Empresa.crear_registrar_muestras
             consola.crear_muestras(empresa_ejemplo)
         assert len(nuevo.muestras) == 0
         assert len(lote.muestras) == 20

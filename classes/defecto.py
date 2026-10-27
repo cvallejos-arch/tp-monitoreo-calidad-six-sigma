@@ -25,6 +25,13 @@ class Defecto:
     def es_critico(self):
         return self._gravedad == 5
 
+    def __lt__(self, otro):
+        """Permite comparar defectos con < (y por eso ordenarlos con sorted):
+        un defecto es "menor" que otro si es menos grave."""
+        if not isinstance(otro, Defecto):
+            return NotImplemented
+        return self._gravedad < otro._gravedad
+
     def copia(self):
         """Crea una copia inmutable del defecto."""
         return Defecto(

@@ -161,18 +161,12 @@ def crear_lote(empresa):
 
 def crear_muestras(empresa):
     lote = elegir_de_lista("lotes", empresa.listar_lotes(), describir_lote)
-    libre = lote.cantidad_fabricada - sum(map(lambda m: m.cantidad, lote.muestras))
-    print(f"Capacidad libre del lote: {libre} unidades")
+    print(f"Capacidad libre del lote: {lote.capacidad_libre} unidades")
     cantidad = pedir_entero("¿Cuántas muestras?", minimo=1)
     unidades = pedir_entero("Unidades por muestra", minimo=1)
-    # Se controla ANTES de crear: así no quedan creadas solo algunas
-    if cantidad * unidades > libre:
-        raise DatosInvalidosError(
-            f"{cantidad} muestras de {unidades} = {cantidad * unidades} unidades: "
-            f"supera la capacidad libre del lote ({libre})"
-        )
-    for _ in range(cantidad):
-        empresa.crear_registrar_muestra(unidades, lote)
+    # crear_registrar_muestras controla el total ANTES de crear (si no entran
+    # todas, no crea ninguna). [unidades] * cantidad se desempaqueta con *.
+    empresa.crear_registrar_muestras(lote, *[unidades] * cantidad)
     print(f"[OK] Se crearon {cantidad} muestras. {describir_lote(lote)}")
 
 

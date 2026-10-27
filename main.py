@@ -98,13 +98,13 @@ def main():
     # Lote 1: 1000 tornillos en 20 muestras de 50. El lote crea sus muestras
     # (composición) y las pone en su cola de pendientes (FIFO).
     lote = empresa.crear_registrar_lote("Tornillos", 1000)
-    muestras = []
-    for _ in range(20):
-        muestras.append(empresa.crear_registrar_muestra(50, lote))
+    # *args: [50] * 20 es una lista con veinte 50; el * la desempaqueta en 20 argumentos
+    muestras = empresa.crear_registrar_muestras(lote, *[50] * 20)
     capacidad_usada = sum(map(lambda m: m.cantidad, muestras))
     print(f"Lote '{lote.nombre_componentes}' [{id_corto(lote)}]: {len(muestras)} muestras, "
           f"capacidad usada {capacidad_usada}/{lote.cantidad_fabricada}")
     print(f"Muestras pendientes en la cola: {len(lote.pendientes_en_orden())}")
+    print(f"¿La muestra 0 pertenece al lote? (muestra in lote, con __contains__): {muestras[0] in lote}")
 
     # Profesionales
     prof_ana = empresa.crear_registrar_profesional("Ana")
@@ -278,10 +278,12 @@ def main():
 
     subtitulo("Lote 2: un caso por cada regla de cierre (límite de gravedad 5)")
     lote_2 = empresa.crear_registrar_lote("Arandelas", 40)
-    m_igual = empresa.crear_registrar_muestra(10, lote_2)
-    m_supera = empresa.crear_registrar_muestra(10, lote_2)
-    m_critica = empresa.crear_registrar_muestra(10, lote_2)
-    m_limpia = empresa.crear_registrar_muestra(10, lote_2)
+    intentar("4b. Crear 5 muestras de 10 en un lote de 40 (no entran todas)",
+             "Empresa.crear_registrar_muestras (controla el total ANTES de crear)",
+             lambda: empresa.crear_registrar_muestras(lote_2, 10, 10, 10, 10, 10))
+    print(f"    No se creó ninguna: el lote 2 tiene {len(lote_2.muestras)} muestras")
+    # *args: cada cantidad es un argumento; la tupla devuelta se desempaqueta en 4 variables
+    m_igual, m_supera, m_critica, m_limpia = empresa.crear_registrar_muestras(lote_2, 10, 10, 10, 10)
 
     # Bruno (certificación que vence HOY) con el equipo de 182 días: los dos límites se aceptan
     inspeccionar(empresa, m_igual, prof_bruno, equipo_borde, proc_visual, fecha_hoy,
@@ -301,10 +303,10 @@ def main():
     print(f"2 de 4 no conformes = {lote_2.porcentaje_no_conforme()}% -> {lote_2.decidir().value}")
 
     subtitulo("Defectos inválidos (regla 3)")
-    intentar("4b. Crear una observación con gravedad 6 (tiene que ser de 1 a 5)",
+    intentar("4c. Crear una observación con gravedad 6 (tiene que ser de 1 a 5)",
              "validar_rango_entero (validacion.py), desde ObservacionVisual.__init__",
              lambda: ObservacionVisual("Raya profunda", True, 6))
-    intentar("4c. Crear un defecto dimensional con la medida DENTRO de la tolerancia",
+    intentar("4d. Crear un defecto dimensional con la medida DENTRO de la tolerancia",
              "DefectoDimensional.__init__ (un defecto dimensional exige estar fuera de rango)",
              lambda: DefectoDimensional("Pieza", 2, 9.5, 9.0, 10.0))
 
@@ -428,12 +430,17 @@ def main():
     print(f"Y el índice AVL de equipos: {len(cargada.equipos_vencidos_al(fecha_hoy))} equipo vencido")
 
     ruta_invalida = "archivo_invalido.pkl"
-    with open(ruta_invalida, "w", encoding="utf-8") as f:
-        f.write("esto no es una empresa")
-    intentar("6a. Cargar un archivo que no es un pickle de una Empresa",
-             "Empresa.cargar (convierte el error de pickle con raise ... from e)",
-             lambda: Empresa.cargar(ruta_invalida))
-    os.remove(ruta_invalida)
+    try:
+        with open(ruta_invalida, "w", encoding="utf-8") as f:
+            f.write("esto no es una empresa")
+        intentar("6a. Cargar un archivo que no es un pickle de una Empresa",
+                 "Empresa.cargar (convierte el error de pickle con raise ... from e)",
+                 lambda: Empresa.cargar(ruta_invalida))
+    finally:
+        # finally se ejecuta SIEMPRE, haya error o no: el archivo temporal nunca queda
+        if os.path.exists(ruta_invalida):
+            os.remove(ruta_invalida)
+            print("    (finally: se borró el archivo temporal)")
 
     # ============================================================
     #  7. SIMULACIÓN ALEATORIA CON SEMILLA
@@ -480,11 +487,13 @@ def main():
     print(f"Lote 1 '{lote.nombre_componentes}': {lote.estado.value} | "
           f"Lote 2 '{lote_2.nombre_componentes}': {lote_2.estado.value}")
 
-    print("\nReportes de desviación (uno por cada muestra no conforme):")
+    print("\nReportes de desviación (uno por cada muestra no conforme), con sus defectos")
+    print("del más grave al menos grave (sorted, que compara con Defecto.__lt__):")
     for r in empresa.reportes()[:3]:
         print(f"  [{id_corto(r)}] {r.fecha} | muestra [{str(r.muestra_id)[:8]}] | "
+              f"gravedad máxima {r.gravedad_maxima} (calculada con reduce) | "
               f"{texto_historial(r.historial_estados)}")
-        for d in r.defectos:
+        for d in r.defectos_por_gravedad():
             print(f"      - {d.descripcion} (gravedad {d.gravedad})")
     print(f"  ... y {len(empresa.reportes()) - 3} más de los lotes simulados")
 

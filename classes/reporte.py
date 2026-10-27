@@ -1,5 +1,6 @@
 import uuid
 from datetime import date
+from functools import reduce
 
 from classes.defecto import Defecto
 from classes.estado_muestra import EstadoMuestra
@@ -51,8 +52,15 @@ class Reporte:
 
     @property
     def gravedad_maxima(self):
-        """La gravedad más alta entre sus defectos (5 = hay un crítico)."""
-        return max(map(lambda d: d.gravedad, self._defectos), default=0)
+        """La gravedad más alta entre sus defectos (5 = hay un crítico).
+        reduce recorre los defectos de a uno y va acumulando la mayor gravedad
+        vista hasta ahora; arranca en 0 (un reporte sin defectos da 0)."""
+        return reduce(lambda mayor, d: max(mayor, d.gravedad), self._defectos, 0)
+
+    def defectos_por_gravedad(self):
+        """Los defectos del más grave al menos grave. sorted usa Defecto.__lt__
+        para comparar; no modifica la tupla original del reporte."""
+        return sorted(self._defectos, reverse=True)
 
     @property
     def suma_gravedades(self):
