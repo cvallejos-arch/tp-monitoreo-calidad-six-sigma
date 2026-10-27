@@ -55,3 +55,24 @@ class TestUnicidadReporte:
         r1 = Reporte("M1", "L1", "P1", date(2025, 6, 15), defectos)
         r2 = Reporte("M1", "L1", "P1", date(2025, 6, 15), defectos)
         assert r1.id != r2.id
+
+
+class TestGravedadYOrden:
+    def _reporte(self, *gravedades):
+        defectos = list(map(lambda g: Defecto("VISUAL", f"Defecto {g}", g), gravedades))
+        return Reporte("M1", "L1", "P1", date(2025, 6, 15), defectos)
+
+    def test_gravedad_maxima_con_reduce(self):
+        assert self._reporte(2, 5, 3).gravedad_maxima == 5
+
+    def test_gravedad_maxima_sin_defectos_es_cero(self):
+        assert self._reporte().gravedad_maxima == 0
+
+    def test_defectos_por_gravedad_del_mas_grave_al_menos_grave(self):
+        reporte = self._reporte(2, 5, 3)
+        assert list(map(lambda d: d.gravedad, reporte.defectos_por_gravedad())) == [5, 3, 2]
+
+    def test_ordenar_no_cambia_los_defectos_del_reporte(self):
+        reporte = self._reporte(2, 5, 3)
+        reporte.defectos_por_gravedad()
+        assert list(map(lambda d: d.gravedad, reporte.defectos)) == [2, 5, 3]

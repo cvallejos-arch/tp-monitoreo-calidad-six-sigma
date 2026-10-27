@@ -189,3 +189,23 @@ class TestConsultasLote:
         _cerrar_muestra_conforme(m_cerrada)
         assert lote.total_defectos_criticos() == 0
         assert lote.conteo_por_tipo() == {}
+
+
+class TestPertenenciaYCapacidad:
+    def test_muestra_in_lote(self):
+        """__contains__ permite escribir `muestra in lote`."""
+        lote_a = Lote("Tornillos", 100)
+        lote_b = Lote("Tuercas", 100)
+        muestra = lote_a.crear_muestra(10)
+        assert muestra in lote_a
+        assert muestra not in lote_b
+
+    def test_in_con_algo_que_no_es_muestra(self):
+        assert "muestra" not in Lote("Tornillos", 100)
+
+    def test_capacidad_libre(self):
+        lote = Lote("Tornillos", 100)
+        assert lote.capacidad_libre == 100
+        lote.crear_muestra(30)
+        lote.crear_muestra(20)
+        assert lote.capacidad_libre == 50

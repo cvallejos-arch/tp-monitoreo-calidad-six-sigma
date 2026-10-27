@@ -45,13 +45,10 @@ class Profesional:
         return cert.es_vigente(fecha)
 
     def certificaciones_vigentes(self, fecha):
-        """Retorna las certificaciones vigentes en la fecha indicada."""
-        return tuple(
-            filter(
-                lambda cert: cert.es_vigente(fecha),
-                self._certificaciones.values()
-            )
-        )
+        """Retorna las certificaciones vigentes en la fecha indicada, de la que
+        vence primero a la que vence última (sorted con key)."""
+        vigentes = filter(lambda cert: cert.es_vigente(fecha), self._certificaciones.values())
+        return tuple(sorted(vigentes, key=lambda cert: cert.fecha_fin))
 
     def __repr__(self):
         # Se recorre el dict con .items(): cada par es (nombre, certificacion).

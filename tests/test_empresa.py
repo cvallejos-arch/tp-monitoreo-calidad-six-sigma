@@ -9,7 +9,7 @@ from classes.proc_visual import ProcedimientoVisual
 from classes.proc_dimensional import ProcedimientoDimensional
 from classes.estado_lote import EstadoLote
 from classes.estado_muestra import EstadoMuestra
-from classes.excepciones import DatosInvalidosError
+from classes.excepciones import DatosInvalidosError, TransicionIlegalError
 
 
 @pytest.fixture
@@ -151,3 +151,49 @@ class TestResumen:
         assert resumen["equipos"] == 1
         assert resumen["procedimientos"] == 0
         assert resumen["inspecciones"] == 0
+
+
+class TestCrearVariasMuestras:
+    """crear_registrar_muestras(lote, *cantidades): *args."""
+
+    def test_crea_una_muestra_por_argumento(self):
+        empresa = Empresa()
+        lote = empresa.crear_registrar_lote("Tornillos", 100)
+        muestras = empresa.crear_registrar_muestras(lote, 50, 30, 20)
+        assert isinstance(muestras, tuple)
+        assert list(map(lambda m: m.cantidad, muestras)) == [50, 30, 20]
+        assert all(map(lambda m: m in lote, muestras))
+        assert len(empresa.listar_muestras()) == 3
+
+    def test_desempaquetar_una_lista(self):
+        empresa = Empresa()
+        lote = empresa.crear_registrar_lote("Tornillos", 100)
+        assert len(empresa.crear_registrar_muestras(lote, *[10] * 10)) == 10
+        assert lote.capacidad_libre == 0
+
+    def test_si_no_entran_todas_no_crea_ninguna(self):
+        empresa = Empresa()
+        lote = empresa.crear_registrar_lote("Tornillos", 100)
+        with pytest.raises(TransicionIlegalError):
+            empresa.crear_registrar_muestras(lote, 60, 60)
+        assert len(lote.muestras) == 0
+        assert empresa.listar_muestras() == []
+
+    def test_una_cantidad_invalida_no_crea_ninguna(self):
+        empresa = Empresa()
+        lote = empresa.crear_registrar_lote("Tornillos", 100)
+        with pytest.raises(DatosInvalidosError):
+            empresa.crear_registrar_muestras(lote, 10, 0, 10)
+        assert len(lote.muestras) == 0
+
+    def test_sin_cantidades(self):
+        empresa = Empresa()
+        lote = empresa.crear_registrar_lote("Tornillos", 100)
+        with pytest.raises(DatosInvalidosError):
+            empresa.crear_registrar_muestras(lote)
+
+    def test_respetan_el_orden_de_la_cola(self):
+        empresa = Empresa()
+        lote = empresa.crear_registrar_lote("Tornillos", 100)
+        primera, segunda = empresa.crear_registrar_muestras(lote, 10, 20)
+        assert lote.siguiente_muestra_pendiente() is primera

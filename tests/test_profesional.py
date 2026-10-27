@@ -109,3 +109,14 @@ class TestReprProfesional:
     def test_repr_sin_certificaciones(self):
         prof = Profesional("Ana")
         assert "Ana" in repr(prof)
+
+
+class TestCertificacionesVigentesOrdenadas:
+    def test_de_la_que_vence_primero_a_la_ultima(self):
+        """sorted con key=lambda: ordena por fecha de fin."""
+        prof = Profesional("Ana")
+        tarde = Certificacion("ISO", date(2025, 1, 1), date(2026, 12, 31))
+        pronto = Certificacion("Seguridad", date(2025, 1, 1), date(2025, 7, 1))
+        prof.agregar_certificacion(tarde)
+        prof.agregar_certificacion(pronto)
+        assert prof.certificaciones_vigentes(date(2025, 6, 15)) == (pronto, tarde)

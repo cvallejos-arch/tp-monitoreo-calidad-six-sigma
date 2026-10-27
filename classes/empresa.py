@@ -11,8 +11,8 @@ from classes.procedimiento import Procedimiento
 from classes.reporte import Reporte
 from classes.arbol_avl import ArbolAVL
 from classes.cola_prioridad import ColaPrioridad
-from classes.excepciones import EstructuraVaciaError, DatosInvalidosError
-from classes.validacion import validar_fecha_tipo, validar_rango_fechas
+from classes.excepciones import EstructuraVaciaError, DatosInvalidosError, TransicionIlegalError
+from classes.validacion import validar_fecha_tipo, validar_rango_fechas, validar_cantidad
 
 class Empresa:
     # Clase de los objetos guardados en cada categoría del registro
@@ -51,6 +51,32 @@ class Empresa:
         muestra = lote.crear_muestra(cantidad)
         self._registros["muestras"][muestra.id] = muestra
         return muestra
+
+    def crear_registrar_muestras(self, lote, *cantidades):
+        """Crea varias muestras en el lote, una por cada cantidad recibida.
+        Ejemplo: crear_registrar_muestras(lote, 50, 50, 30) crea 3 muestras.
+
+        *cantidades junta los argumentos posicionales en una TUPLA, así que acepta
+        cualquier cantidad de muestras (también se puede desempaquetar una lista:
+        crear_registrar_muestras(lote, *[10] * 20)).
+
+        Todo se valida ANTES de crear: si alguna cantidad es inválida o entre todas
+        superan la capacidad libre del lote, no se crea ninguna.
+        Retorna una tupla con las muestras creadas."""
+        if not cantidades:
+            raise DatosInvalidosError("Hay que indicar al menos una cantidad de unidades")
+        for cantidad in cantidades:
+            validar_cantidad(cantidad)
+        total = sum(cantidades)
+        if total > lote.capacidad_libre:
+            raise TransicionIlegalError(
+                f"Las {len(cantidades)} muestras suman {total} unidades y al lote le quedan "
+                f"{lote.capacidad_libre}: no se crea ninguna.",
+                lote_id=lote.id,
+                cantidad_solicitada=total,
+                capacidad_libre=lote.capacidad_libre
+            )
+        return tuple(map(lambda cantidad: self.crear_registrar_muestra(cantidad, lote), cantidades))
 
     def crear_registrar_profesional(self, nombre):
         """Crea y registra un profesional en el sistema."""
