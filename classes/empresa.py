@@ -1,5 +1,6 @@
 import json
 import pickle
+from datetime import date, timedelta
 
 from classes.lote import Lote
 from classes.muestra import Muestra
@@ -10,6 +11,7 @@ from classes.procedimiento import Procedimiento
 from classes.reporte import Reporte
 from classes.arbol_avl import ArbolAVL
 from classes.excepciones import EstructuraVaciaError, DatosInvalidosError
+from classes.validacion import validar_fecha_tipo, validar_rango_fechas
 
 class Empresa:
     # Clase de los objetos guardados en cada categoría del registro
@@ -32,6 +34,10 @@ class Empresa:
             "procedimientos": {},
             "inspecciones": {}
         }
+        # Índice de equipos ordenado por fecha de calibración. Se mantiene al día:
+        # cada equipo se inserta al registrarlo (O(log n)), así las consultas por
+        # fecha no tienen que recorrer ni reordenar todos los equipos.
+        self._equipos_por_calibracion = ArbolAVL()
 
     def crear_registrar_lote(self, nombre_componentes, cantidad_fabricada):
         """Crea y registra un lote en el sistema."""
@@ -55,6 +61,7 @@ class Empresa:
         """Crea y registra un equipo en el sistema."""
         equipo = Equipo(categoria, fecha_calibracion)
         self._registros["equipos"][equipo.id] = equipo
+        self._equipos_por_calibracion.insertar(equipo.fecha_calibracion, equipo)
         return equipo
 
     def crear_registrar_procedimiento(self, tipo_procedimiento, **kwargs):
@@ -154,7 +161,7 @@ class Empresa:
             )
         )
 
-    # --- Índice con árbol AVL ---
+    # --- Índices con árbol AVL ---
 
     def arbol_lotes_por_produccion(self):
         """Retorna un ArbolAVL con los lotes registrados, indexados por cantidad
@@ -163,6 +170,54 @@ class Empresa:
         for lote in self._registros["lotes"].values():
             arbol.insertar(lote.cantidad_fabricada, lote)
         return arbol
+
+    # Equipos por fecha de calibración (el árbol se mantiene actualizado).
+    # Un equipo vale hasta fecha_calibracion + 182 días: preguntar por fechas de
+    # vencimiento equivale a preguntar por un rango de fechas de calibración.
+
+    def equipos_por_calibracion(self):
+        """Todos los equipos, del calibrado hace más tiempo al más reciente."""
+        return self._equipos_por_calibracion.recorrido_in_orden()
+
+    def equipos_vencidos_al(self, fecha):
+        """Equipos con la calibración vencida en esa fecha: los calibrados hace más
+        de 182 días. Es una búsqueda por rango en el árbol: calibración <= fecha - 183 días."""
+        validar_fecha_tipo(fecha, "fecha")
+        limite = fecha - timedelta(days=Equipo.DIAS_VALIDEZ_CALIBRACION + 1)
+        return self._equipos_por_calibracion.buscar_rango(date.min, limite)
+
+    def equipos_que_vencen_entre(self, desde, hasta):
+        """Equipos cuya calibración vence entre desde y hasta (ambos incluidos),
+        ordenados del que vence primero al último. Sirve para avisar con tiempo,
+        por ejemplo los que vencen en los próximos 30 días."""
+        validar_rango_fechas(desde, hasta)
+        dias = timedelta(days=Equipo.DIAS_VALIDEZ_CALIBRACION)
+        return self._equipos_por_calibracion.buscar_rango(desde - dias, hasta - dias)
+
+    def equipo_que_vence_primero(self, fecha):
+        """Entre los equipos calibrados en esa fecha, el que vence antes
+        (None si no hay ninguno calibrado)."""
+        validar_fecha_tipo(fecha, "fecha")
+        dias = timedelta(days=Equipo.DIAS_VALIDEZ_CALIBRACION)
+        calibrados = self._equipos_por_calibracion.buscar_rango(fecha - dias, fecha)
+        return calibrados[0] if calibrados else None
+
+    # Reportes por fecha (el árbol se arma en cada consulta: los reportes los crea
+    # la Muestra al cerrarse, no la Empresa, así que no hay un momento único donde
+    # insertarlos sin cambiar el flujo de las inspecciones).
+
+    def arbol_reportes_por_fecha(self):
+        """Retorna un ArbolAVL con los reportes de desviación, indexados por fecha."""
+        arbol = ArbolAVL()
+        for reporte in self.reportes():
+            arbol.insertar(reporte.fecha, reporte)
+        return arbol
+
+    def reportes_entre(self, desde, hasta):
+        """Reportes de desviación con fecha entre desde y hasta (ambos incluidos),
+        ordenados por fecha. Por ejemplo, todos los rechazos de un mes."""
+        validar_rango_fechas(desde, hasta)
+        return self.arbol_reportes_por_fecha().buscar_rango(desde, hasta)
 
     # --- Serialización JSON de reportes ---
 
