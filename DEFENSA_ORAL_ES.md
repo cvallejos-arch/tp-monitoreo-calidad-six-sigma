@@ -30,7 +30,7 @@ Para cada tema del programa de **Estructuras de Datos y Programación**: **dónd
 |---|---|---|
 | `isinstance` | `Profesional.agregar_certificacion`, `Nodo.set_siguiente`, `Inspeccion.ejecutar` (defectos ajenos), `Empresa.cargar` | Verificar el **tipo** del objeto antes de aceptarlo protege las reglas (por ejemplo, que un archivo cargado sea de verdad una `Empresa`) |
 | `is` vs `==` | `main.py` sección 6: `cargada is not empresa`; `Lote.siguiente_muestra_pendiente` en los tests (`is primera`) | Distinguir **identidad** (el mismo objeto) de **igualdad** (mismo contenido): lo cargado con pickle es otro objeto con el mismo contenido |
-| `type(e).__name__` | `intentar` en `main.py`, `_ejecutar` en `menu.py`, `ejecutar_opcion` en `consola.py` | Mostrar al usuario qué clase de error ocurrió |
+| `type(e).__name__` | `intentar` en `main.py`, `App._ejecutar` en `front/clase_app.py`, `ejecutar_opcion` en `consola.py` | Mostrar al usuario qué clase de error ocurrió |
 
 ### Unidad 2 — Tipos de datos
 | Subtema | Dónde | Por qué ahí |
@@ -41,8 +41,10 @@ Para cada tema del programa de **Estructuras de Datos y Programación**: **dónd
 | Copia superficial | `Profesional.certificaciones` devuelve `dict(...)` | Una copia del diccionario: modificarla no cambia al profesional |
 | Copia de objetos | `Reporte` guarda `copia()` de cada defecto | El reporte no depende de los objetos originales |
 
-### Unidad 3 — Bibliotecas
-`datetime` (`date`, `timedelta`: calibraciones, certificaciones, vencimientos) · `uuid` (ids únicos, regla 1) · `abc` (clase abstracta) · `json` y `pickle` (serialización) · `random` (simulador con semilla) · `functools.reduce` · `os` (borrar el archivo temporal en `main.py`) · `tkinter` (interfaz) · `pytest` (500 tests).
+### Unidad 3 — Bibliotecas y módulos
+**Módulos y paquetes propios:** `classes/` (el dominio), `front/` y `front/paginas/` (la interfaz, un módulo por página); `interfaz.py` solo importa `App` y la abre.
+
+**Bibliotecas:** `datetime` (`date`, `timedelta`: calibraciones, certificaciones, vencimientos) · `uuid` (ids únicos, regla 1) · `abc` (clase abstracta) · `json` y `pickle` (serialización) · `random` (simulador con semilla) · `functools.reduce` · `os` (borrar el archivo temporal en `main.py`) · `tkinter` (interfaz) · `pytest` (500 tests).
 
 ### Unidad 4 — Funciones
 | Subtema | Dónde | Por qué ahí |
@@ -65,7 +67,7 @@ Para cada tema del programa de **Estructuras de Datos y Programación**: **dónd
 | `raise` | Validaciones de todos los constructores; `Inspeccion.__init__` | Rechazar **antes** de cambiar el estado: si algo es inválido, el objeto no se crea o la muestra no cambia |
 | Excepciones propias y jerarquía | `excepciones.py`: `CalidadError` → 7 subclases | Un solo `except CalidadError` captura todas; cada subclase dice qué regla falló |
 | Datos extra (`**detalles`) | `CalidadError.detalles` (caso 2a de `main.py`) | Adjuntar al error los datos que lo causaron |
-| `try/except ... as e` y orden | `consola.ejecutar_opcion` (`CalidadError`, después `OSError`), `menu._ejecutar` | Capturar primero lo específico del sistema y después los errores de archivo |
+| `try/except ... as e` y orden | `consola.ejecutar_opcion` (`CalidadError`, después `OSError`), `App._ejecutar` (`front/clase_app.py`) | Capturar primero lo específico del sistema y después los errores de archivo |
 | Propagación | Se lanza en `Lote.decidir` y se captura en la interfaz | El dominio detecta el problema; la interfaz decide cómo mostrarlo |
 | `raise ... from e` | `Empresa.cargar`, `Empresa.cargar_reportes_json`, `ArbolAVL.insertar` | Convertir errores de Python (pickle, JSON, `TypeError`) en errores del sistema sin perder la causa |
 | `finally` | `main.py`, caso 6a | Borrar el archivo temporal **siempre**, haya error o no |
@@ -81,7 +83,7 @@ Para cada tema del programa de **Estructuras de Datos y Programación**: **dónd
 | Herencia simple | `Procedimiento` → `ProcedimientoVisual` / `ProcedimientoDimensional`; `Defecto` → `DefectoVisual` / `DefectoDimensional` | Regla "es un": un procedimiento visual **es un** procedimiento |
 | Herencia multinivel | `Exception` → `CalidadError` → `DatosInvalidosError` (y las demás) | Capturar por nivel: todas las del sistema o una en particular |
 | `super()` | `ProcedimientoVisual.__init__`, `DefectoDimensional.__init__` y `to_dict` | Reutilizar lo del padre y agregar lo propio |
-| Herencia múltiple / MRO | No se usa | Ninguna clase del dominio "es" dos cosas a la vez |
+| Herencia múltiple y MRO | `App` (`front/clase_app.py`) hereda de `PaginaPanel`, `PaginaRegistro`, `PaginaInspeccion`, `PaginaLotes`, `PaginaReportes` y `Archivos`. MRO: `App → PaginaPanel → … → Archivos → object` | Patrón *mixin*: cada página aporta sus métodos y `App` los reúne en una ventana, en lugar de un archivo de 1400 líneas. Ninguna página repite nombres de métodos, así que el MRO no genera ambigüedades. No es un "es un" estricto: la herencia se usa para reunir comportamiento. En el dominio no se usa herencia múltiple |
 | Clase abstracta | `Procedimiento(ABC)` con `@abstractmethod evaluar` | No se puede crear un procedimiento genérico (caso 1e) |
 | Polimorfismo | `evaluar()`, `copia()`, `to_dict()` | La inspección llama a `evaluar()` sin saber qué procedimiento es |
 | Métodos mágicos | `__len__` y `__iter__` (`ListaEnlazada`, `Pila`, `Cola`, `ArbolAVL`), `__contains__` (`muestra in lote`), `__lt__` (`Defecto`), `__bool__` (`ColaPrioridad`: `while cola:`), `__str__`, `__repr__` | Que nuestras clases funcionen con `len`, `for`, `in`, `<`, `sorted` y `while` |
@@ -97,21 +99,24 @@ Para cada tema del programa de **Estructuras de Datos y Programación**: **dónd
 | Lista enlazada | `Nodo`, `ListaEnlazada` (un solo tipo de dato por lista) | Base de la pila y la cola, como en la cátedra |
 | Pila (LIFO) | Historial de estados de `Muestra`: el `peek()` es el estado actual | El último estado es el que importa, y el historial completo va al reporte |
 | Cola (FIFO) | Muestras pendientes de `Lote`; `ArbolAVL.niveles()` (recorrido BFS) | Inspeccionar en orden de llegada |
-| Árbol AVL | `Empresa`: equipos por fecha de calibración, reportes por fecha, lotes por producción; `Lote`: defectos por gravedad | Las fechas llegan en orden: un árbol sin balance quedaría como una lista |
+| Árbol AVL | `Empresa`: equipos por fecha de calibración, reportes por fecha, lotes por producción; `Lote`: defectos por gravedad | Las fechas llegan en orden: un árbol sin balance quedaría como una lista. Cubre los ejercicios de la clase 11: `minimo`, `maximo`, `buscar` e `insertar` recursivos y `entre(a, b)` (nuestro `buscar_rango`). A diferencia del ABB de la clase, una clave repetida no se descarta: se guarda en el mismo nodo, porque hay muchos defectos con la misma gravedad |
 | Heap (cola de prioridad) | `Empresa.cola_atencion_reportes()` | Atender primero al más grave, no al que llegó antes |
 | Conjuntos | Todavía no se dieron en clase | Cuando se den: `__eq__` y `__hash__` por id en las entidades |
 | Vectores y matrices | No se usan | El dominio no tiene datos en forma de grilla |
 
 ### Unidad 8 — Recursividad
+Como dice la cátedra, la recursividad es una **técnica** (no una estructura de datos), y una recursión correcta cumple **3 condiciones**: un **caso base** que se resuelve directo, un **caso recursivo** que usa la misma función sobre un problema más chico, y **progreso** (cada llamada se acerca al caso base). Tiene una **fase de ida** (las llamadas bajan) y una **fase de vuelta** (las llamadas pendientes se resuelven en orden inverso).
+
 | Subtema | Dónde | Por qué ahí |
 |---|---|---|
 | Caso base y caso recursivo | Todas las operaciones de `ArbolAVL` (`_insertar_rec`, `_buscar_rec`, `_buscar_rango_rec`, `_eliminar_rec`, recorridos) | Cada subárbol es otro árbol: el caso base es `None` (o encontrar la clave) |
-| Balanceo al volver de la recursión | `ArbolAVL._balancear`, llamado al volver de cada llamada | La recursión recorre el camino de abajo hacia arriba sin guardarlo a mano |
+| Fase de vuelta | `ArbolAVL._balancear`, llamado al volver de cada llamada | En la vuelta se actualizan las alturas y se rota: la recursión recorre el camino de abajo hacia arriba sin guardarlo a mano |
+| Progreso | Cada llamada baja un nivel (`nodo.get_izquierdo()` o `get_derecho()`) | El subárbol es más chico en cada llamada, hasta llegar a `None` |
 | Recursión vs iteración | `ListaEnlazada`: `buscar` / `buscar_recursivo`, `len` / `longitud_recursiva` (`main.py` 5.1) | Comparar las dos formas sobre la misma estructura |
-| Límite | Una lista muy larga (miles de nodos) daría `RecursionError` en las versiones recursivas | Por eso en la lista se usan las iterativas; en el AVL la profundidad es log n |
+| Criterio de uso y límite | Recursión en el árbol (estructura **jerárquica**); en la lista, las versiones iterativas (proceso **lineal**) | Es el criterio de la cátedra. Además, una lista muy larga daría `RecursionError`; en el AVL la profundidad es log n |
 
 ### Unidad 9 — Gráficos (Matplotlib)
-No se usa. La consigna excluye los gráficos de control, y el panel de `menu.py` dibuja sus gráficos a mano en un `Canvas` de tkinter, sin librerías extra.
+No se usa. La consigna excluye los gráficos de control, y el panel de la interfaz (`front/paginas/panel.py`, con las funciones de `front/visualizaciones.py`) dibuja sus gráficos a mano en un `Canvas` de tkinter, sin librerías extra.
 
 ### Unidades 10 y 11 — Búsqueda, ordenamiento y complejidad
 | Subtema | Dónde | Complejidad |
@@ -154,7 +159,7 @@ Los 4 casos: izquierda-izquierda (rotar a la derecha), derecha-derecha (rotar a 
 
 ## 4. Errores que se pueden provocar en vivo
 
-**Dónde se capturan:** en `main.py`, en la función `intentar`; en `menu.py`, en `_ejecutar` (muestra una ventana con el nombre de la excepción); en `consola.py`, en `ejecutar_opcion` (imprime `[X] NombreDelError: mensaje`). En todos los casos el programa sigue funcionando.
+**Dónde se capturan:** en `main.py`, en la función `intentar`; en la interfaz gráfica, en `App._ejecutar` (`front/clase_app.py`: muestra una ventana con el nombre de la excepción); en `consola.py`, en `ejecutar_opcion` (imprime `[X] NombreDelError: mensaje`). En todos los casos el programa sigue funcionando.
 
 **Por qué el estado no cambia:** toda validación se hace **antes** de modificar algo. Si falla, se lanza la excepción y no se llega a cambiar nada.
 
@@ -181,7 +186,7 @@ Los 4 casos: izquierda-izquierda (rotar a la derecha), derecha-derecha (rotar a 
 | 6a | Cargar un archivo que no es una empresa | `DatosInvalidosError` | `Empresa.cargar` (con `raise ... from e`) |
 | 8a | Filtrar por un atributo que no existe | `DatosInvalidosError` | `Empresa._filtrar` |
 
-**Para mostrarlos en la interfaz:** botón *Datos de ejemplo*, y después inspeccionar con Carlos (sin certificación), elegir el equipo vencido, decidir un lote con muestras pendientes, o crear más muestras de las que entran.
+**Para mostrarlos en la interfaz** (`py interfaz.py`): botón *Datos de ejemplo*, y después inspeccionar con Carlos (sin certificación), elegir el equipo vencido, decidir un lote con muestras pendientes, o crear más muestras de las que entran.
 
 **Código mínimo (verificado) para hacer en vivo:**
 ```python
@@ -260,5 +265,6 @@ py -c "from datetime import date; from classes.empresa import Empresa; from clas
 - **¿Por qué un AVL y no un diccionario?** El diccionario busca por clave exacta, pero no sirve para rangos ni para orden ("equipos que vencen antes de X"). Y no un árbol común porque las fechas llegan ordenadas y lo degenerarían en una lista.
 - **¿Por qué un heap para los reportes?** Hay que atender primero al más grave, no al que llegó antes; el heap da el máximo en O(1) y extraerlo cuesta O(log n).
 - **¿Por qué JSON y pickle?** JSON para los reportes, que tiene que poder leer cualquier persona; pickle para retomar la empresa completa, con sus objetos y relaciones.
-- **¿Dónde está la recursión?** En todas las operaciones del AVL y en las versiones recursivas de la lista enlazada (comparadas con las iterativas en `main.py` 5.1).
+- **¿Dónde está la recursión?** En todas las operaciones del AVL y en las versiones recursivas de la lista enlazada (comparadas con las iterativas en `main.py` 5.1). Cumple las 3 condiciones: caso base (`None` o la clave encontrada), caso recursivo (un subárbol) y progreso (cada llamada baja un nivel).
+- **¿Por qué `App` hereda de 6 clases?** Es herencia múltiple con el patrón *mixin*: cada página de `front/paginas/` aporta sus métodos y `App` los reúne. Ninguna página repite nombres, así que el MRO no tiene ambigüedades.
 - **¿Cómo se usó la IA?** Está documentado en el README (sección 10): qué se generó, qué errores ayudó a detectar y cómo lo revisamos.

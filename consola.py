@@ -1,5 +1,5 @@
 """Menú por consola del sistema de monitoreo de calidad (QuantumTech Precision).
-Es la alternativa a la interfaz gráfica (menu.py) cuando la computadora no puede
+Es la alternativa a la interfaz gráfica (interfaz.py) cuando la computadora no puede
 abrir ventanas. Toda la lógica está en las clases de classes/: este archivo solo
 pide datos con input(), llama a esas clases y muestra los resultados.
 

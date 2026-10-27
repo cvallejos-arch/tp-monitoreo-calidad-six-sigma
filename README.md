@@ -13,13 +13,13 @@ Trabajo práctico de **Estructuras de Datos y Programación (ITBA)**. La consign
 Desde la carpeta del proyecto:
 
 ```bash
-py menu.py            # interfaz gráfica (ventana con panel de control)
+py interfaz.py        # interfaz gráfica (ventana con panel de control)
 py consola.py         # el mismo uso interactivo, por consola con input()
 py main.py            # demo guionada: recorre todo el sistema y provoca cada error
 py -m pytest -q       # 500 tests
 ```
 
-**Para probar rápido:** en `menu.py` (botón **Datos de ejemplo**) o en `consola.py` (opción **12**) se cargan lotes, profesionales con y sin certificación, equipos al día, por vencer y vencidos, y los dos procedimientos. Desde ahí se pueden provocar los errores en vivo: inspeccionar con Carlos (sin certificación), usar el equipo vencido o decidir un lote con muestras pendientes.
+**Para probar rápido:** en la interfaz gráfica (botón **Datos de ejemplo**) o en `consola.py` (opción **12**) se cargan lotes, profesionales con y sin certificación, equipos al día, por vencer y vencidos, y los dos procedimientos. Desde ahí se pueden provocar los errores en vivo: inspeccionar con Carlos (sin certificación), usar el equipo vencido o decidir un lote con muestras pendientes.
 
 **Resultados fijos de `main.py`:** lote 1 con exactamente 5 % no conforme → **APROBADO** (se rechaza solo si se *supera* el 5 %); lote 2 con 50 % → **RECHAZADO**; simulación con semilla 5 → 5 % **APROBADO** y semilla 1 → 10 % **RECHAZADO**.
 
@@ -31,7 +31,8 @@ py -m pytest -q       # 500 tests
 |---|---|
 | `classes/` | **El dominio:** todas las clases y sus reglas. No usa `input`, `print` ni azar. |
 | `classes/simulador.py` | Generador de observaciones al azar con semilla (lo usan las tres interfaces). |
-| `menu.py` | Interfaz gráfica (tkinter). |
+| `interfaz.py` | Punto de entrada de la interfaz gráfica (tkinter): crea la ventana `App`. |
+| `front/` | La interfaz gráfica, separada en módulos: `clase_app.py` (ventana principal), `paginas/` (una clase por página), `estilos.py`, `herramientas.py` y `visualizaciones.py`. |
 | `consola.py` | Interfaz por consola (`input()`). |
 | `main.py` | Demo guionada por consola. |
 | `tests/` | 500 tests con pytest: uno o más archivos por clase, más reglas de la consigna, índices, serialización, simulador y consola. |
@@ -43,14 +44,15 @@ Las tres interfaces están **separadas del dominio**, como pide la consigna: sol
 
 ## 3. Interfaces
 
-**`menu.py`: interfaz gráfica (5 páginas, barra lateral)**
+**`interfaz.py` + `front/`: interfaz gráfica (5 páginas, barra lateral)**
+- **Organización:** `interfaz.py` solo crea la ventana. `front/clase_app.py` define `App`, que hereda los métodos de una clase por página (`front/paginas/`: `PaginaPanel`, `PaginaRegistro`, `PaginaInspeccion`, `PaginaLotes`, `PaginaReportes` y `Archivos`). `front/estilos.py` tiene los colores y fuentes; `front/herramientas.py`, funciones auxiliares (lectura de datos, tarjetas, botones); `front/visualizaciones.py`, los gráficos.
 - **Panel:** indicadores (lotes, avance, % no conforme, gravedad promedio, críticos, reportes) y gráficos dibujados a mano en un `Canvas`: estado de las muestras, defectos por gravedad (con el árbol AVL), % no conforme por lote, inspecciones por profesional, calibración de equipos (ordenados con el AVL: el que vence primero, arriba) y últimas inspecciones.
 - **Registro:** lotes, muestras, profesionales, certificaciones, equipos y procedimientos.
 - **Inspección:** elegir lote y muestra (o *Tomar la siguiente de la cola*), profesional, equipo, procedimiento y fecha; cargar observaciones a mano o *Observaciones al azar*; *Inspeccionar muestra*; *Simulación aleatoria del lote*.
 - **Lotes:** tabla de lotes, muestras del lote con su historial (pila) y *Decidir lote seleccionado*.
 - **Reportes:** en **orden de atención** (columna *Turno*, cola de prioridad: el más grave primero), con **filtro por fechas** (árbol AVL) y *Exportar a JSON*.
 - Barra lateral: *Datos de ejemplo*, *Guardar empresa* y *Cargar empresa* (pickle).
-- **Errores:** pasan todos por `_ejecutar`, que captura `CalidadError` y `OSError` y los muestra en una ventana con el nombre de la excepción. El programa sigue funcionando.
+- **Errores:** pasan todos por `App._ejecutar` (`front/clase_app.py`), que captura `CalidadError` y `OSError` y los muestra en una ventana con el nombre de la excepción. El programa sigue funcionando.
 
 **`consola.py`: menú por consola (15 opciones)**
 - Registro, inspección (a mano o al azar), ver y decidir lotes, reportes, pickle/JSON, datos de ejemplo, simulación aleatoria, **alertas de calibración** (opción 14) y **reportes por fecha en orden de atención** (opción 15).
@@ -164,6 +166,7 @@ Las tres interfaces están **separadas del dominio**, como pide la consigna: sol
 - **¿Por qué un AVL y no un árbol de búsqueda común?** Las fechas de calibración y de reportes llegan en orden, que es el peor caso de un árbol sin balance (queda como una lista y buscar es O(n)). El AVL se rebalancea con rotaciones y garantiza O(log n). El índice de equipos se mantiene al día porque los equipos siempre se crean por `Empresa`; el de reportes se arma al consultar, porque los reportes los crea la `Muestra` al cerrarse.
 - **¿Por qué una cola de prioridad para los reportes?** Hay que atender primero al más grave, no al que llegó antes. La prioridad es la tupla (gravedad máxima, suma de gravedades) y los empates salen por orden de llegada.
 - **¿Dónde va el azar?** Solo en `Simulador`, nunca en el dominio; los tests usan semillas fijas.
+- **¿Por qué `App` hereda de 6 clases (herencia múltiple)?** Cada página de la interfaz es una clase con sus propios métodos (patrón *mixin*), y `App` los combina en una sola ventana. Así cada página está en su archivo, en lugar de un único archivo de 1400 líneas. Las páginas no repiten nombres de métodos, así que el MRO (`App → PaginaPanel → … → Archivos → object`) no genera ambigüedades. No es una relación "es un" en sentido estricto: se usa la herencia para reunir comportamiento.
 
 ---
 
@@ -171,7 +174,7 @@ Las tres interfaces están **separadas del dominio**, como pide la consigna: sol
 
 La consigna deja **fuera de alcance la interfaz gráfica y la persistencia**. Las sumamos para aplicar temas de la materia, sin cambiar ninguna regla:
 - **Serialización:** JSON para los reportes (legible, no depende de Python: `to_dict()` + `json.dump`, y `Clase(**data)` al cargar) y pickle para la empresa completa (retomar el trabajo donde quedó).
-- **Interfaces interactivas:** `menu.py` (ventana) y `consola.py` (`input()`).
+- **Interfaces interactivas:** `interfaz.py` con `front/` (ventana) y `consola.py` (`input()`).
 - **Simulación aleatoria con semilla**, para generar y repetir casos.
 - **Índices AVL y cola de prioridad**, para consultas por fecha y orden de atención.
 
@@ -184,10 +187,10 @@ Resumen; el detalle de cada tema y subtema del programa, con el archivo, la clas
 | Unidad del programa | Dónde se aplica (ejemplos) |
 |---|---|
 | 1-2. Objetos y tipos de datos | `isinstance`/`is`; tuplas para devolver datos inmutables; listas, diccionarios y strings (`isalpha`, `join`, f-strings) |
-| 3. Bibliotecas | `datetime`, `uuid`, `abc`, `json`, `pickle`, `random`, `functools`, `os`, `tkinter`, `pytest` |
+| 3. Bibliotecas y módulos | Módulos y paquetes propios (`classes/`, `front/`, `front/paginas/`); `datetime`, `uuid`, `abc`, `json`, `pickle`, `random`, `functools`, `os`, `tkinter`, `pytest` |
 | 4. Funciones | `lambda`, `map`, `filter`, `reduce`, `zip`, `sorted(key=...)`, `any`/`all`, `*args`, `**kwargs`, funciones como valores (`intentar` en `main.py`), `yield` |
 | 5. Excepciones | Jerarquía propia con base `CalidadError`, `raise ... from e`, `try/except/finally` |
-| 6. POO | Encapsulamiento con `@property`, herencia y polimorfismo, clase abstracta (`ABC`), `@staticmethod`/`@classmethod`, métodos mágicos (`__len__`, `__iter__`, `__contains__`, `__lt__`, `__bool__`, `__repr__`, `__str__`), composición y agregación |
+| 6. POO | Encapsulamiento con `@property`, herencia simple, multinivel y múltiple (`App` en `front/clase_app.py` hereda de las 6 clases de página), polimorfismo, clase abstracta (`ABC`), `@staticmethod`/`@classmethod`, métodos mágicos (`__len__`, `__iter__`, `__contains__`, `__lt__`, `__bool__`, `__repr__`, `__str__`), composición y agregación |
 | 7. Estructuras de datos | Listas enlazadas, pila, cola, árbol AVL, heap, diccionarios, tuplas |
 | 8. Recursividad | Todas las operaciones del AVL; versiones recursivas de `ListaEnlazada` frente a las iterativas |
 | 10-11. Búsqueda y complejidad | Búsqueda secuencial (lista enlazada) frente a búsqueda en el AVL O(log n); heap O(log n) |
@@ -199,7 +202,7 @@ Resumen; el detalle de cada tema y subtema del programa, con el archivo, la clas
 El modelo de dominio, las clases base y los tests iniciales los construimos nosotros. Después usamos Claude (Claude Code) para revisar el código y aplicar los conceptos teóricos en los lugares que correspondía.
 
 **Qué se generó con IA:** con Claude, a partir de nuestras indicaciones, se generaron:
-- la interfaz gráfica (`menu.py`) y el menú por consola (`consola.py`);
+- la interfaz gráfica (`interfaz.py` y `front/`) y el menú por consola (`consola.py`);
 - el `Simulador` (`classes/simulador.py`);
 - la serialización con JSON y pickle;
 - `Nodo`, `ListaEnlazada`, el árbol AVL y la cola de prioridad;

@@ -32,7 +32,7 @@ For each topic of the **Data Structures and Programming** syllabus: **where** it
 |---|---|---|
 | `isinstance` | `Profesional.agregar_certificacion`, `Nodo.set_siguiente`, `Inspeccion.ejecutar` (foreign defects), `Empresa.cargar` | Checking the object's **type** before accepting it protects the rules (e.g. that a loaded file really is an `Empresa`) |
 | `is` vs `==` | `main.py` section 6: `cargada is not empresa`; tests use `is` with the queue | Distinguish **identity** (same object) from **equality** (same content): what pickle loads is a different object with the same content |
-| `type(e).__name__` | `intentar` in `main.py`, `_ejecutar` in `menu.py`, `ejecutar_opcion` in `consola.py` | Show the user which kind of error happened |
+| `type(e).__name__` | `intentar` in `main.py`, `App._ejecutar` in `front/clase_app.py`, `ejecutar_opcion` in `consola.py` | Show the user which kind of error happened |
 
 ### Unit 2 — Data types
 | Subtopic | Where | Why there |
@@ -43,8 +43,10 @@ For each topic of the **Data Structures and Programming** syllabus: **where** it
 | Shallow copy | `Profesional.certificaciones` returns `dict(...)` | A copy of the dict: changing it does not change the inspector |
 | Object copies | `Reporte` stores `copia()` of each defect | The report does not depend on the original objects |
 
-### Unit 3 — Libraries
-`datetime` (`date`, `timedelta`: calibrations, certifications, expiry) · `uuid` (unique ids, rule 1) · `abc` (abstract class) · `json` and `pickle` (serialization) · `random` (seeded simulator) · `functools.reduce` · `os` (delete the temporary file in `main.py`) · `tkinter` (GUI) · `pytest` (500 tests).
+### Unit 3 — Libraries and modules
+**Our own modules and packages:** `classes/` (the domain), `front/` and `front/paginas/` (the GUI, one module per page); `interfaz.py` only imports `App` and opens it.
+
+**Libraries:** `datetime` (`date`, `timedelta`: calibrations, certifications, expiry) · `uuid` (unique ids, rule 1) · `abc` (abstract class) · `json` and `pickle` (serialization) · `random` (seeded simulator) · `functools.reduce` · `os` (delete the temporary file in `main.py`) · `tkinter` (GUI) · `pytest` (500 tests).
 
 ### Unit 4 — Functions
 | Subtopic | Where | Why there |
@@ -67,7 +69,7 @@ For each topic of the **Data Structures and Programming** syllabus: **where** it
 | `raise` | Validations in every constructor; `Inspeccion.__init__` | Reject **before** changing the state: an invalid object is not created, the sample does not change |
 | Custom exceptions and hierarchy | `excepciones.py`: `CalidadError` → 7 subclasses | One `except CalidadError` catches them all; each subclass says which rule failed |
 | Extra data (`**detalles`) | `CalidadError.detalles` (case 2a of `main.py`) | Attach the data that caused the error |
-| `try/except ... as e` and order | `consola.ejecutar_opcion` (`CalidadError`, then `OSError`), `menu._ejecutar` | Catch the system's errors first, then file errors |
+| `try/except ... as e` and order | `consola.ejecutar_opcion` (`CalidadError`, then `OSError`), `App._ejecutar` (`front/clase_app.py`) | Catch the system's errors first, then file errors |
 | Propagation | Raised in `Lote.decidir`, caught in the interface | The domain detects the problem; the interface decides how to show it |
 | `raise ... from e` | `Empresa.cargar`, `Empresa.cargar_reportes_json`, `ArbolAVL.insertar` | Turn Python errors (pickle, JSON, `TypeError`) into system errors without losing the cause |
 | `finally` | `main.py`, case 6a | **Always** delete the temporary file, error or not |
@@ -83,7 +85,7 @@ For each topic of the **Data Structures and Programming** syllabus: **where** it
 | Single inheritance | `Procedimiento` → `ProcedimientoVisual` / `ProcedimientoDimensional`; `Defecto` → `DefectoVisual` / `DefectoDimensional` | "Is a" rule: a visual procedure **is a** procedure |
 | Multilevel inheritance | `Exception` → `CalidadError` → `DatosInvalidosError` (and the others) | Catch by level: all system errors or a specific one |
 | `super()` | `ProcedimientoVisual.__init__`, `DefectoDimensional.__init__` and `to_dict` | Reuse the parent's code and add our own |
-| Multiple inheritance / MRO | Not used | No domain class "is" two things at once |
+| Multiple inheritance and MRO | `App` (`front/clase_app.py`) inherits from `PaginaPanel`, `PaginaRegistro`, `PaginaInspeccion`, `PaginaLotes`, `PaginaReportes` and `Archivos`. MRO: `App → PaginaPanel → … → Archivos → object` | *Mixin* pattern: each page contributes its methods and `App` combines them into one window, instead of a 1400-line file. No page repeats a method name, so the MRO has no ambiguity. It is not a strict "is a": inheritance is used to combine behavior. The domain does not use multiple inheritance |
 | Abstract class | `Procedimiento(ABC)` with `@abstractmethod evaluar` | A generic procedure cannot be created (case 1e) |
 | Polymorphism | `evaluar()`, `copia()`, `to_dict()` | The inspection calls `evaluar()` without knowing which procedure it is |
 | Magic methods | `__len__` and `__iter__` (`ListaEnlazada`, `Pila`, `Cola`, `ArbolAVL`), `__contains__` (`muestra in lote`), `__lt__` (`Defecto`), `__bool__` (`ColaPrioridad`: `while cola:`), `__str__`, `__repr__` | Our classes work with `len`, `for`, `in`, `<`, `sorted` and `while` |
@@ -99,21 +101,24 @@ For each topic of the **Data Structures and Programming** syllabus: **where** it
 | Linked list | `Nodo`, `ListaEnlazada` (one data type per list) | Base of the stack and the queue, as taught in class |
 | Stack (LIFO) | `Muestra` state history: `peek()` is the current state | The last state is what matters, and the full history goes into the report |
 | Queue (FIFO) | `Lote` pending samples; `ArbolAVL.niveles()` (BFS traversal) | Inspect in arrival order |
-| AVL tree | `Empresa`: instruments by calibration date, reports by date, batches by production; `Lote`: defects by severity | Dates arrive in order: an unbalanced tree would become a list |
+| AVL tree | `Empresa`: instruments by calibration date, reports by date, batches by production; `Lote`: defects by severity | Dates arrive in order: an unbalanced tree would become a list. It covers the class 11 exercises: recursive `minimo`, `maximo`, `buscar` and `insertar`, and `entre(a, b)` (our `buscar_rango`). Unlike the BST in class, a repeated key is not discarded: it is stored in the same node, because many defects share a severity |
 | Heap (priority queue) | `Empresa.cola_atencion_reportes()` | Handle the most severe first, not the one that arrived first |
 | Sets | Not taught yet | When taught: `__eq__` and `__hash__` by id in the entities |
 | Vectors and matrices | Not used | The domain has no grid-shaped data |
 
 ### Unit 8 — Recursion
+As taught in class, recursion is a **technique** (not a data structure), and a correct recursion meets **3 conditions**: a **base case** solved directly, a **recursive case** that uses the same function on a smaller problem, and **progress** (each call gets closer to the base case). It has a **descending phase** (calls go down) and a **returning phase** (pending calls resolve in reverse order).
+
 | Subtopic | Where | Why there |
 |---|---|---|
 | Base case and recursive case | Every `ArbolAVL` operation (`_insertar_rec`, `_buscar_rec`, `_buscar_rango_rec`, `_eliminar_rec`, traversals) | Each subtree is a tree: the base case is `None` (or finding the key) |
-| Rebalancing on the way back | `ArbolAVL._balancear`, called after each recursive call returns | Recursion walks the path bottom-up without storing it by hand |
+| Returning phase | `ArbolAVL._balancear`, called after each recursive call returns | On the way back, heights are updated and rotations applied: recursion walks the path bottom-up without storing it by hand |
+| Progress | Each call goes down one level (`nodo.get_izquierdo()` or `get_derecho()`) | The subtree gets smaller with each call until it reaches `None` |
 | Recursion vs iteration | `ListaEnlazada`: `buscar` / `buscar_recursivo`, `len` / `longitud_recursiva` (`main.py` 5.1) | Compare both approaches on the same structure |
-| Limit | A very long list (thousands of nodes) would raise `RecursionError` in the recursive versions | That's why the list uses the iterative ones; in the AVL the depth is log n |
+| When to use it, and its limit | Recursion in the tree (**hierarchical** structure); iterative versions in the list (**linear** process) | This is the course's criterion. Also, a very long list would raise `RecursionError`; in the AVL the depth is log n |
 
 ### Unit 9 — Plotting (Matplotlib)
-Not used. The assignment excludes control charts, and the `menu.py` dashboard draws its charts by hand on a tkinter `Canvas`, with no extra libraries.
+Not used. The assignment excludes control charts, and the GUI dashboard (`front/paginas/panel.py`, with the functions in `front/visualizaciones.py`) draws its charts by hand on a tkinter `Canvas`, with no extra libraries.
 
 ### Units 10 and 11 — Searching, sorting and complexity
 | Subtopic | Where | Complexity |
@@ -156,7 +161,7 @@ The 4 cases: left-left (rotate right), right-right (rotate left), left-right and
 
 ## 4. Errors that can be triggered live
 
-**Where they are caught:** in `main.py`, in the `intentar` function; in `menu.py`, in `_ejecutar` (shows a window with the exception name); in `consola.py`, in `ejecutar_opcion` (prints `[X] ErrorName: message`). In every case the program keeps running.
+**Where they are caught:** in `main.py`, in the `intentar` function; in the GUI, in `App._ejecutar` (`front/clase_app.py`: shows a window with the exception name); in `consola.py`, in `ejecutar_opcion` (prints `[X] ErrorName: message`). In every case the program keeps running.
 
 **Why the state does not change:** every validation happens **before** modifying anything. If it fails, the exception is raised and nothing is changed.
 
@@ -183,7 +188,7 @@ The 4 cases: left-left (rotate right), right-right (rotate left), left-right and
 | 6a | Load a file that is not a company | `DatosInvalidosError` | `Empresa.cargar` (with `raise ... from e`) |
 | 8a | Filter by a non-existent attribute | `DatosInvalidosError` | `Empresa._filtrar` |
 
-**To show them in the GUI:** *Datos de ejemplo* button, then inspect with Carlos (no certification), pick the expired instrument, decide a batch with pending samples, or create more samples than fit.
+**To show them in the GUI** (`py interfaz.py`): *Datos de ejemplo* button, then inspect with Carlos (no certification), pick the expired instrument, decide a batch with pending samples, or create more samples than fit.
 
 **Minimal (verified) code to run live:**
 ```python
@@ -262,5 +267,6 @@ py -c "from datetime import date; from classes.empresa import Empresa; from clas
 - **Why an AVL and not a dict?** A dict looks up exact keys but can't do ranges or order ("instruments expiring before X"). And not a plain tree, because dates arrive sorted and would degrade it into a list.
 - **Why a heap for the reports?** The most severe must be handled first, not the first to arrive; the heap gives the maximum in O(1) and extracting it costs O(log n).
 - **Why JSON and pickle?** JSON for the reports, which anyone must be able to read; pickle to resume the whole company with its objects and relations.
-- **Where is the recursion?** In every AVL operation and in the recursive versions of the linked list (compared with the iterative ones in `main.py` 5.1).
+- **Where is the recursion?** In every AVL operation and in the recursive versions of the linked list (compared with the iterative ones in `main.py` 5.1). It meets the 3 conditions: base case (`None` or the key found), recursive case (a subtree) and progress (each call goes down one level).
+- **Why does `App` inherit from 6 classes?** It is multiple inheritance with the *mixin* pattern: each page in `front/paginas/` contributes its methods and `App` combines them. No page repeats a name, so the MRO has no ambiguity.
 - **How was AI used?** It is documented in the README (section 10): what was generated, which errors it helped detect and how we reviewed it.
