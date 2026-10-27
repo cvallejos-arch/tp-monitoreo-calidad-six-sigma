@@ -22,9 +22,9 @@ from classes.simulador import Simulador
 from classes.excepciones import CalidadError, DatosInvalidosError, TransicionIlegalError
 
 
-# ============================================================
+  
 #  PALETA Y TIPOGRAFÍA
-# ============================================================
+  
 
 FUENTE = "Segoe UI"
 LATERAL = "#1f4e8c"          # barra lateral
@@ -60,9 +60,9 @@ MESES = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto
          "septiembre", "octubre", "noviembre", "diciembre")
 
 
-# ============================================================
+  
 #  FUNCIONES AUXILIARES (lectura de datos y textos)
-# ============================================================
+  
 
 def id_corto(obj_id):
     return str(obj_id)[:8]
@@ -103,9 +103,9 @@ def promedio(valores):
     return sum(valores) / len(valores) if valores else 0
 
 
-# ============================================================
+  
 #  COMPONENTES VISUALES
-# ============================================================
+  
 
 class Selector:
     """Combobox que muestra textos pero devuelve el objeto elegido."""
@@ -147,14 +147,14 @@ def tarjeta(padre, titulo=None, subtitulo=None):
     marco = tk.Frame(padre, bg=BLANCO, highlightthickness=1, highlightbackground=BORDE)
     if titulo:
         cabecera = tk.Frame(marco, bg=BLANCO)
-        cabecera.pack(fill="x", padx=16, pady=(12, 0))
+        cabecera.pack(fill="x", padx=16, pady=(10, 0))
         tk.Label(cabecera, text=titulo, bg=BLANCO, fg=TEXTO,
                  font=(FUENTE, 12, "bold")).pack(anchor="w")
         if subtitulo:
             tk.Label(cabecera, text=subtitulo, bg=BLANCO, fg=SUAVE,
                      font=(FUENTE, 8)).pack(anchor="w")
     cuerpo = tk.Frame(marco, bg=BLANCO)
-    cuerpo.pack(fill="both", expand=True, padx=16, pady=(8, 14))
+    cuerpo.pack(fill="both", expand=True, padx=16, pady=(6, 10))
     return marco, cuerpo
 
 
@@ -200,7 +200,7 @@ def dona(partes, texto_centro, sub_centro):
         return sin_datos()
 
     def dibujar(c, w, h):
-        d = min(h - 16, w * 0.42)
+        d = min(h - 16, w * 0.36)
         x0, y0 = 8, (h - d) / 2
         inicio = 90
         for _, valor, color in partes:
@@ -223,7 +223,7 @@ def dona(partes, texto_centro, sub_centro):
         y = h / 2 - alto_fila * len(partes) / 2 + alto_fila / 2
         for etiqueta, valor, color in partes:
             rectangulo_redondeado(c, x, y - 6, x + 12, y + 6, 4, fill=color, outline=color)
-            c.create_text(x + 20, y, text=etiqueta, anchor="w", fill=TEXTO, font=(FUENTE, 9))
+            c.create_text(x + 18, y, text=etiqueta, anchor="w", fill=TEXTO, font=(FUENTE, 8))
             c.create_text(w - 4, y, text=f"{valor} · {valor / total:.0%}", anchor="e",
                           fill=SUAVE, font=(FUENTE, 8, "bold"))
             y += alto_fila
@@ -287,6 +287,20 @@ def barras_horizontales(datos, maximo=None, umbral=None, texto_umbral="", max_fi
     return dibujar
 
 
+def contadores(datos):
+    """Fila de contadores: un número grande de color y su etiqueta debajo.
+    datos = [(etiqueta, valor, color)]."""
+    def dibujar(c, w, h):
+        espacio = w / len(datos)
+        for i, (etiqueta, valor, color) in enumerate(datos):
+            cx = espacio * i + espacio / 2
+            c.create_text(cx, h / 2 - 9, text=str(valor), fill=color, font=(FUENTE, 16, "bold"))
+            c.create_text(cx, h / 2 + 13, text=etiqueta, fill=SUAVE, font=(FUENTE, 9))
+            if i > 0:
+                c.create_line(espacio * i, 6, espacio * i, h - 6, fill="#eef2f8")
+    return dibujar
+
+
 def lista_con_insignias(filas):
     """Lista de filas con una insignia de color a la derecha.
     filas = [(titulo, detalle, texto_insignia, color)]."""
@@ -298,6 +312,10 @@ def lista_con_insignias(filas):
         for i, (titulo, detalle, insignia, color) in enumerate(filas):
             y = alto_fila * i + alto_fila / 2
             c.create_oval(4, y - 4, 12, y + 4, fill=color, outline=color)
+            ancho = 16 + len(insignia) * 7
+            maximo = max(8, int((w - ancho - 34) / 7))
+            if len(titulo) > maximo:
+                titulo = titulo[:maximo - 1] + "…"
             c.create_text(22, y - 7, text=titulo, anchor="w", fill=TEXTO, font=(FUENTE, 9, "bold"))
             c.create_text(22, y + 8, text=detalle, anchor="w", fill=SUAVE, font=(FUENTE, 8))
             ancho = 16 + len(insignia) * 7
@@ -328,9 +346,9 @@ def barras_de_progreso(filas):
     return dibujar
 
 
-# ============================================================
+  
 #  APLICACIÓN
-# ============================================================
+  
 
 class App:
     PAGINAS = (
@@ -349,8 +367,16 @@ class App:
         self._reportes_por_fila = {}
 
         raiz.title("QuantumTech Precision · Monitoreo de Calidad")
-        raiz.geometry("1340x840")
-        raiz.minsize(1200, 760)
+        # La ventana se adapta a la pantalla: maximizada si se puede (Windows),
+        # y si no, del tamaño de la pantalla disponible
+        ancho = min(1340, raiz.winfo_screenwidth() - 40)
+        alto = min(840, raiz.winfo_screenheight() - 80)
+        raiz.geometry(f"{ancho}x{alto}+10+10")
+        raiz.minsize(1100, 640)
+        try:
+            raiz.state("zoomed")
+        except tk.TclError:
+            pass
         raiz.configure(bg=FONDO)
         self._estilos()
 
@@ -397,9 +423,9 @@ class App:
         self.mostrar_pagina("panel")
         self.refrescar()
 
-    # ============================================================
+      
     #  ESTILOS Y ESTRUCTURA
-    # ============================================================
+      
 
     def _estilos(self):
         estilo = ttk.Style()
@@ -474,8 +500,8 @@ class App:
 
     def _campo(self, padre, fila, texto, widget):
         tk.Label(padre, text=texto, bg=BLANCO, fg=SUAVE, font=(FUENTE, 9)).grid(
-            row=fila, column=0, sticky="w", pady=4, padx=(0, 10))
-        widget.grid(row=fila, column=1, sticky="ew", pady=4)
+            row=fila, column=0, sticky="w", pady=3, padx=(0, 10))
+        widget.grid(row=fila, column=1, sticky="ew", pady=3)
         return widget
 
     def _ejecutar(self, accion, mensaje_ok=None):
@@ -490,9 +516,9 @@ class App:
             self.estado.set(f"✔ {mensaje_ok}")
         return resultado
 
-    # ============================================================
+      
     #  PÁGINA 1: PANEL DE CONTROL
-    # ============================================================
+      
 
     def _pagina_panel(self, pagina):
         pagina.columnconfigure((0, 1, 2), weight=1, uniform="col")
@@ -505,9 +531,9 @@ class App:
         self.kpis = {}
         indicadores = (
             ("lotes", "▤", CELESTE, "Lotes"),
-            ("avance", "✔", AZUL, "Inspeccionadas"),
+            ("avance", "✔", AZUL, "Inspecc."),
             ("no_conforme", "%", ROJO, "No conformes"),
-            ("gravedad", "≈", AMARILLO, "Gravedad prom."),
+            ("gravedad", "≈", AMARILLO, "Grav. prom."),
             ("criticos", "!", "#b23a64", "Críticos"),
             ("reportes", "⚑", NARANJA, "Reportes"),
         )
@@ -516,12 +542,12 @@ class App:
 
         # Gráficos
         graficos = (
-            (1, 0, "estado_muestras", "Estado de las muestras", "todas las muestras", 210),
-            (1, 1, "gravedad", "Defectos por gravedad", "muestras cerradas · se cuentan con el árbol AVL", 210),
-            (1, 2, "lotes", "% no conforme por lote", "de mayor a menor producción (in-orden del árbol AVL)", 210),
-            (2, 0, "profesionales", "Inspecciones por profesional", "cantidad y defectos promedio por inspección", 200),
-            (2, 1, "equipos", "Calibración de equipos", "validez de 182 días", 200),
-            (2, 2, "ultimas", "Últimas inspecciones", "las 5 más recientes", 200),
+            (1, 0, "estado_muestras", "Estado de las muestras", "todas las muestras", 140),
+            (1, 1, "gravedad", "Defectos por gravedad", "muestras cerradas · se cuentan con el árbol AVL", 140),
+            (1, 2, "lotes", "% no conforme por lote", "de mayor a menor producción (in-orden del árbol AVL)", 140),
+            (2, 0, "profesionales", "Inspecciones por profesional", "cantidad y defectos promedio por inspección", 140),
+            (2, 1, "equipos", "Calibración de equipos", "validez de 182 días", 140),
+            (2, 2, "ultimas", "Últimas inspecciones", "las 5 más recientes", 140),
         )
         self.graficos = {}
         for fila, col, clave, titulo, sub, alto in graficos:
@@ -533,11 +559,11 @@ class App:
     def _tarjeta_kpi(self, padre, columna, simbolo, color, titulo):
         marco = tk.Frame(padre, bg=BLANCO, highlightthickness=1, highlightbackground=BORDE)
         marco.grid(row=0, column=columna, sticky="nsew", padx=6, pady=6)
-        icono = tk.Canvas(marco, width=46, height=46, bg=BLANCO, highlightthickness=0)
-        icono.grid(row=0, column=0, rowspan=3, padx=(14, 10), pady=14)
-        icono.create_oval(2, 2, 44, 44, fill=color, outline=color)
-        icono.create_text(23, 23, text=simbolo, fill=BLANCO, font=(FUENTE, 15, "bold"))
-        valor = tk.Label(marco, text="0", bg=BLANCO, fg=TEXTO, font=(FUENTE, 19, "bold"))
+        icono = tk.Canvas(marco, width=38, height=38, bg=BLANCO, highlightthickness=0)
+        icono.grid(row=0, column=0, rowspan=3, padx=(10, 8), pady=12)
+        icono.create_oval(2, 2, 36, 36, fill=color, outline=color)
+        icono.create_text(19, 19, text=simbolo, fill=BLANCO, font=(FUENTE, 13, "bold"))
+        valor = tk.Label(marco, text="0", bg=BLANCO, fg=TEXTO, font=(FUENTE, 18, "bold"))
         valor.grid(row=0, column=1, sticky="sw", pady=(12, 0))
         tk.Label(marco, text=titulo, bg=BLANCO, fg=SUAVE, font=(FUENTE, 9)).grid(
             row=1, column=1, sticky="w")
@@ -576,16 +602,16 @@ class App:
         # --- Indicadores ---
         contar = lambda estado: len(list(filter(lambda l: l.estado == estado, lotes)))
         self._poner_kpi("lotes", str(len(lotes)),
-                        f"{contar(EstadoLote.APROBADO)} aprob. · {contar(EstadoLote.RECHAZADO)} rech.")
+                        f"{contar(EstadoLote.APROBADO)} ok · {contar(EstadoLote.RECHAZADO)} rech.")
         avance = len(cerradas) / len(muestras) if muestras else 0
-        self._poner_kpi("avance", f"{len(cerradas)}/{len(muestras)}", f"{avance:.0%} del total")
+        self._poner_kpi("avance", f"{len(cerradas)}/{len(muestras)}", f"{avance:.0%} avance")
         porcentaje = len(no_conformes) / len(cerradas) * 100 if cerradas else 0
         self._poner_kpi("no_conforme", f"{porcentaje:.1f}%",
                         f"{len(no_conformes)} de {len(cerradas)}")
         self._poner_kpi("gravedad", f"{gravedad_promedio:.2f}", f"{total_defectos} defectos")
-        self._poner_kpi("criticos", str(por_gravedad[5]), "defectos grav. 5")
+        self._poner_kpi("criticos", str(por_gravedad[5]), "gravedad 5")
         self._poner_kpi("reportes", str(len(reportes)),
-                        f"{len(inspecciones)} inspecciones")
+                        f"{len(inspecciones)} insp.")
 
         # --- Estado de las muestras (dona) ---
         nombres = {"PENDIENTE": "Pendiente", "EN_INSPECCION": "En inspección",
@@ -643,9 +669,9 @@ class App:
                           muestra.estado.value, COLOR_ESTADO[muestra.estado.value]))
         self.graficos["ultimas"].mostrar(lista_con_insignias(filas))
 
-    # ============================================================
+      
     #  PÁGINA 2: REGISTRO
-    # ============================================================
+      
 
     def _pagina_registro(self, pagina):
         pagina.columnconfigure((0, 1, 2), weight=1, uniform="col")
@@ -656,24 +682,24 @@ class App:
             cuerpo.columnconfigure(1, weight=1)
             return cuerpo
 
-        f = nueva(0, 0, "Nuevo lote", "partida de componentes")
+        f = nueva(1, 0, "Nuevo lote", "partida de componentes")
         self.lote_nombre = self._campo(f, 0, "Componentes", ttk.Entry(f))
         self.lote_cantidad = self._campo(f, 1, "Cantidad fabricada", ttk.Entry(f))
         boton(f, "Crear lote", self.crear_lote).grid(row=2, column=1, sticky="e", pady=(10, 0))
 
-        f = nueva(0, 1, "Muestras", "las crea el lote")
+        f = nueva(1, 1, "Muestras", "las crea el lote")
         self.muestra_lote = Selector(f, 22)
         self._campo(f, 0, "Lote", self.muestra_lote.combo)
         self.muestra_cantidad = self._campo(f, 1, "Cant. de muestras", ttk.Entry(f))
         self.muestra_unidades = self._campo(f, 2, "Unidades c/u", ttk.Entry(f))
         boton(f, "Crear muestras", self.crear_muestras).grid(row=3, column=1, sticky="e", pady=(10, 0))
 
-        f = nueva(0, 2, "Nuevo profesional", "quien inspecciona")
+        f = nueva(1, 2, "Nuevo profesional", "quien inspecciona")
         self.prof_nombre = self._campo(f, 0, "Nombre", ttk.Entry(f))
         boton(f, "Registrar profesional", self.registrar_profesional).grid(
             row=1, column=1, sticky="e", pady=(10, 0))
 
-        f = nueva(1, 0, "Certificación", "vigencia con bornes inclusivos")
+        f = nueva(2, 0, "Certificación", "fechas AAAA-MM-DD · bornes inclusivos")
         self.cert_prof = Selector(f, 22)
         self._campo(f, 0, "Profesional", self.cert_prof.combo)
         self.cert_nombre = self._campo(f, 1, "Certificación", ttk.Entry(f))
@@ -684,7 +710,7 @@ class App:
         boton(f, "Agregar certificación", self.agregar_certificacion).grid(
             row=4, column=1, sticky="e", pady=(10, 0))
 
-        f = nueva(1, 1, "Nuevo equipo", "la calibración vale 182 días")
+        f = nueva(2, 1, "Nuevo equipo", "la calibración vale 182 días")
         self.equipo_categoria = ttk.Combobox(f, state="readonly", values=["Visual", "Dimensional"])
         self.equipo_categoria.set("Visual")
         self._campo(f, 0, "Categoría", self.equipo_categoria)
@@ -692,22 +718,22 @@ class App:
         self.equipo_fecha.insert(0, date.today().isoformat())
         boton(f, "Registrar equipo", self.registrar_equipo).grid(row=2, column=1, sticky="e", pady=(10, 0))
 
-        f = nueva(1, 2, "Nuevo procedimiento", "visual o dimensional")
+        f = nueva(2, 2, "Nuevo procedimiento", "visual o dimensional")
         self.proc_tipo = ttk.Combobox(f, state="readonly", values=["Visual", "Dimensional"])
         self.proc_tipo.set("Visual")
         self._campo(f, 0, "Tipo", self.proc_tipo)
         self.proc_limite = self._campo(f, 1, "Límite gravedad", ttk.Entry(f))
         self.proc_cert = self._campo(f, 2, "Certificación", ttk.Entry(f))
-        tk.Label(f, text="Certificación opcional · fechas en formato AAAA-MM-DD",
+        tk.Label(f, text="Certificación opcional",
                  bg=BLANCO, fg=SUAVE, font=(FUENTE, 8)).grid(row=3, column=0, columnspan=2, sticky="w")
         boton(f, "Crear procedimiento", self.crear_procedimiento).grid(
             row=4, column=1, sticky="e", pady=(10, 0))
 
-        # Resumen del registro (se actualiza en refrescar)
-        marco, cuerpo = tarjeta(pagina, "Registro de la empresa", "cantidad por categoría")
-        marco.grid(row=2, column=0, columnspan=3, sticky="nsew", padx=6, pady=6)
-        self.resumen_registro = Grafico(cuerpo, 150)
-        self.resumen_registro.pack(fill="both", expand=True)
+        # Resumen del registro: una franja de contadores arriba de los formularios
+        franja = tk.Frame(pagina, bg=BLANCO, highlightthickness=1, highlightbackground=BORDE)
+        franja.grid(row=0, column=0, columnspan=3, sticky="ew", padx=6, pady=(6, 4))
+        self.resumen_registro = Grafico(franja, 52)
+        self.resumen_registro.pack(fill="x", padx=10, pady=4)
 
     def crear_lote(self):
         def accion():
@@ -764,9 +790,9 @@ class App:
             return self.empresa.crear_registrar_procedimiento(tipo, **datos)  # **kwargs
         self._ejecutar(accion, "Procedimiento creado")
 
-    # ============================================================
+      
     #  PÁGINA 3: INSPECCIÓN
-    # ============================================================
+      
 
     def _pagina_inspeccion(self, pagina):
         pagina.columnconfigure(0, weight=2, uniform="insp")
@@ -795,7 +821,7 @@ class App:
         self.insp_fecha.insert(0, date.today().isoformat())
 
         boton(f, "▶   Inspeccionar muestra", self.inspeccionar).grid(
-            row=7, column=0, columnspan=2, sticky="ew", pady=(16, 8))
+            row=7, column=0, columnspan=2, sticky="ew", pady=(10, 6))
 
         # Resultado de la última inspección
         self.resultado_marco = tk.Frame(f, bg="#f6f9fd")
@@ -806,10 +832,12 @@ class App:
         self.resultado_detalle = tk.Label(self.resultado_marco, text="", bg="#f6f9fd", fg=SUAVE,
                                           font=(FUENTE, 9), anchor="w", justify="left", wraplength=360)
         self.resultado_detalle.pack(fill="x", padx=12, pady=(0, 10))
+        self.resultado_marco.bind("<Configure>", lambda e: self.resultado_detalle.configure(
+            wraplength=max(e.width - 24, 100)))
 
         # Simulación: inspecciona todas las muestras pendientes del lote con datos al azar
         boton(f, "🎲   Simulación aleatoria del lote", self.simulacion_aleatoria, "oscuro").grid(
-            row=9, column=0, columnspan=2, sticky="ew", pady=(16, 2))
+            row=9, column=0, columnspan=2, sticky="ew", pady=(10, 2))
         tk.Label(f, text="Usa el lote, profesional, equipo, procedimiento y fecha elegidos",
                  bg=BLANCO, fg=SUAVE, font=(FUENTE, 8)).grid(row=10, column=0, columnspan=2, sticky="w")
 
@@ -834,7 +862,7 @@ class App:
         boton(botones, "+ Agregar observación", self.agregar_observacion, "secundario").pack(side="left")
         boton(botones, "Vaciar lista", self.vaciar_observaciones, "secundario").pack(side="left", padx=8)
 
-        self.tabla_obs = ttk.Treeview(f, columns=("desc", "detalle"), show="headings", height=8)
+        self.tabla_obs = ttk.Treeview(f, columns=("desc", "detalle"), show="headings", height=6)
         self.tabla_obs.heading("desc", text="DESCRIPCIÓN")
         self.tabla_obs.heading("detalle", text="DETALLE")
         self.tabla_obs.column("desc", width=240)
@@ -1041,9 +1069,9 @@ class App:
         self.siguiente_de_la_cola(avisar=False)  # deja elegida la próxima pendiente
         self.estado.set(f"✔ Inspección cerrada: muestra {estado}")
 
-    # ============================================================
+      
     #  PÁGINA 4: LOTES Y MUESTRAS
-    # ============================================================
+      
 
     def _pagina_lotes(self, pagina):
         pagina.columnconfigure(0, weight=3)
@@ -1057,7 +1085,7 @@ class App:
         cuerpo.rowconfigure(0, weight=1)
         columnas = ("nombre", "estado", "fabricada", "muestras", "pendientes", "no_conf", "criticos")
         titulos = ("COMPONENTES", "ESTADO", "FABRICADA", "MUESTRAS", "PENDIENTES", "% NO CONF.", "CRÍTICOS")
-        self.tabla_lotes = self._tabla(cuerpo, columnas, titulos, 6, fila=0)
+        self.tabla_lotes = self._tabla(cuerpo, columnas, titulos, 5, fila=0)
         self.tabla_lotes.column("nombre", width=140)
         self.tabla_lotes.column("estado", width=135)
         self.tabla_lotes.bind("<<TreeviewSelect>>", lambda e: self.mostrar_muestras())
@@ -1065,7 +1093,7 @@ class App:
         # Detalle del lote elegido
         marco, cuerpo = tarjeta(pagina, "Detalle del lote")
         marco.grid(row=0, column=1, sticky="nsew", padx=6, pady=6)
-        self.detalle_lote = Grafico(cuerpo, 150)
+        self.detalle_lote = Grafico(cuerpo, 130)
         self.detalle_lote.pack(fill="both", expand=True)
         boton(cuerpo, "Decidir lote seleccionado", self.decidir_lote).pack(anchor="e", pady=(8, 0))
 
@@ -1075,7 +1103,7 @@ class App:
         cuerpo.rowconfigure(0, weight=1)
         columnas = ("id", "cantidad", "estado", "defectos", "suma", "historial")
         titulos = ("MUESTRA", "UNIDADES", "ESTADO", "DEFECTOS", "SUMA GRAVEDADES", "HISTORIAL (PILA)")
-        self.tabla_muestras = self._tabla(cuerpo, columnas, titulos, 10, fila=0)
+        self.tabla_muestras = self._tabla(cuerpo, columnas, titulos, 7, fila=0)
         self.tabla_muestras.column("historial", width=420)
 
     def _tabla(self, padre, columnas, titulos, alto, fila):
@@ -1148,9 +1176,9 @@ class App:
                                 f"no conformes (se rechaza si supera el 5%)")
             self.estado.set(f"✔ Lote '{lote.nombre_componentes}' {estado.value}")
 
-    # ============================================================
+      
     #  PÁGINA 5: REPORTES
-    # ============================================================
+      
 
     def _pagina_reportes(self, pagina):
         pagina.columnconfigure((0, 1), weight=1, uniform="reportes")
@@ -1162,7 +1190,7 @@ class App:
         cuerpo.rowconfigure(0, weight=1)
         self.tabla_reportes = self._tabla(cuerpo, ("id", "muestra", "fecha", "defectos", "maxima"),
                                           ("REPORTE", "MUESTRA", "FECHA", "DEFECTOS", "GRAV. MÁX."),
-                                          14, fila=0)
+                                          10, fila=0)
         for col in ("id", "muestra", "fecha", "defectos", "maxima"):
             self.tabla_reportes.column(col, width=88)
         self.tabla_reportes.tag_configure("critico", background=FONDO_ESTADO["NO_CONFORME"])
@@ -1203,9 +1231,9 @@ class App:
             if cantidad is not None:
                 self.estado.set(f"✔ Se exportaron {cantidad} reporte(s) a {ruta}")
 
-    # ============================================================
+      
     #  GUARDAR / CARGAR / DATOS DE EJEMPLO
-    # ============================================================
+      
 
     def guardar_empresa(self):
         ruta = filedialog.asksaveasfilename(defaultextension=".pkl", initialfile="empresa.pkl",
@@ -1271,9 +1299,9 @@ class App:
                             "• 4 equipos: uno de cada tipo al día, uno por vencer y uno VENCIDO\n"
                             "• Procedimiento visual (límite 5, pide ISO) y dimensional (límite 10)")
 
-    # ============================================================
+      
     #  REFRESCAR TODA LA INTERFAZ
-    # ============================================================
+      
 
     def _describir_muestra(self, m):
         return f"Muestra {id_corto(m.id)} · {m.cantidad} u. · {m.estado.value}"
@@ -1333,7 +1361,7 @@ class App:
         colores = (CELESTE, AZUL, NARANJA, VERDE, AMARILLO, "#b23a64")
         datos = list(map(lambda par: (par[1][0].capitalize(), par[1][1], colores[par[0] % 6]),
                          enumerate(resumen.items())))
-        self.resumen_registro.mostrar(barras_verticales(datos))
+        self.resumen_registro.mostrar(contadores(datos))
 
         self.estado.set(f"Lotes: {resumen['lotes']}  ·  Muestras: {resumen['muestras']}  ·  "
                         f"Profesionales: {resumen['profesionales']}  ·  Equipos: {resumen['equipos']}  ·  "
