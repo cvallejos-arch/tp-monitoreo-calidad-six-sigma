@@ -16,7 +16,7 @@ Desde la carpeta del proyecto:
 py interfaz.py        # interfaz gráfica (ventana con panel de control)
 py consola.py         # el mismo uso interactivo, por consola con input()
 py main.py            # demo guionada: recorre todo el sistema y provoca cada error
-py -m pytest -q       # 500 tests
+py -m pytest -q       # 521 tests
 ```
 
 **Para probar rápido:** en la interfaz gráfica (botón **Datos de ejemplo**) o en `consola.py` (opción **12**) se cargan lotes, profesionales con y sin certificación, equipos al día, por vencer y vencidos, y los dos procedimientos. Desde ahí se pueden provocar los errores en vivo: inspeccionar con Carlos (sin certificación), usar el equipo vencido o decidir un lote con muestras pendientes.
@@ -35,7 +35,7 @@ py -m pytest -q       # 500 tests
 | `front/` | La interfaz gráfica, separada en módulos: `clase_app.py` (ventana principal), `paginas/` (una clase por página), `estilos.py`, `herramientas.py` y `visualizaciones.py`. |
 | `consola.py` | Interfaz por consola (`input()`). |
 | `main.py` | Demo guionada por consola. |
-| `tests/` | 500 tests con pytest: uno o más archivos por clase, más reglas de la consigna, índices, serialización, simulador y consola. |
+| `tests/` | 521 tests con pytest: uno o más archivos por clase, más reglas de la consigna, índices, serialización, simulador y consola. |
 | `DEFENSA_ORAL_*.md` | Guías para el oral en español, inglés y francés. |
 
 Las tres interfaces están **separadas del dominio**, como pide la consigna: solo llaman a métodos públicos (nunca a atributos privados como `empresa._registros`), y las reglas se validan siempre dentro del dominio.
@@ -67,8 +67,8 @@ Las tres interfaces están **separadas del dominio**, como pide la consigna: sol
 | 2. Validaciones | Todo lo que `Inspeccion.__init__` controla antes de empezar | 2a sin certificación · 2b certificación vencida · 2c equipo de 183 días · 2d categoría incompatible · 2e calibración posterior a la inspección · 2f dos fallas a la vez · 2g fecha como texto |
 | 3. Inspecciones | Muestra 0 crítica (reporte, pila), muestras 1 a 18 por la cola, muestra 19 dimensional | 3a reinspeccionar · 3b ejecutar una inspección cerrada · 3c defecto en muestra cerrada · 3d decidir lote incompleto · 3e cola vacía |
 | 4. Cierre y decisión | Lote 1 al 5 % → APROBADO; lote 2 con suma = límite, suma > límite, crítico y sin defectos → RECHAZADO; certificación que vence ese día y equipo de 182 días aceptados | 4a decidir otra vez · 4b muestras que no entran (no se crea ninguna) · 4c gravedad 6 · 4d defecto dimensional dentro de tolerancia |
-| 5. Estructuras | Recursión vs iteración, AVL (altura, rotaciones, equipos y reportes por fecha), cola de prioridad, cola con `maxsize` | 5a heap vacío · 5b cola llena |
-| 6. Serialización | Reportes a JSON y empresa completa con pickle | 6a cargar un archivo que no es una empresa (con `finally`) |
+| 5. Estructuras | Recursión vs iteración, AVL (altura, rotaciones, equipos y reportes por fecha), cola de prioridad, cola con `maxsize`, conjuntos (comparar lotes con `&`, `^` y `-`) | 5a heap vacío · 5b cola llena |
+| 6. Serialización | Reportes a JSON y empresa completa con pickle; lo cargado es otro objeto pero la misma entidad (`==` por id) | 6a cargar un archivo que no es una empresa (con `finally`) |
 | 7. Simulación | Semillas 5 y 1, reproducibilidad | — |
 | 8. Resumen | Reportes con defectos ordenados, filtros `**kwargs`, registro | 8a filtro inexistente |
 
@@ -94,7 +94,7 @@ Las tres interfaces están **separadas del dominio**, como pide la consigna: sol
 
 **Lote** (`lote.py`): una partida de componentes; decide si se aprueba.
 - **Atributos:** `id`, `nombre_componentes`, `cantidad_fabricada`, `estado`, `muestras`, `capacidad_libre` y la constante `ESTADOS_FINALES`.
-- **Métodos:** `crear_muestra(cantidad)`, `siguiente_muestra_pendiente()`, `pendientes_en_orden()`, `decidir()`, `porcentaje_no_conforme()`, `todas_cerradas()`, `total_defectos_criticos()`, `conteo_por_tipo()`, `arbol_muestras_por_cantidad()`, `arbol_defectos_por_gravedad()`; `muestra in lote` (`__contains__`).
+- **Métodos:** `crear_muestra(cantidad)`, `siguiente_muestra_pendiente()`, `pendientes_en_orden()`, `decidir()`, `porcentaje_no_conforme()`, `todas_cerradas()`, `total_defectos_criticos()`, `conteo_por_tipo()`, `tipos_de_defecto()` (un `set`), `tipos_en_comun(otro)` (`&`), `tipos_exclusivos(otro)` (`^`), `arbol_muestras_por_cantidad()`, `arbol_defectos_por_gravedad()`; `muestra in lote` (`__contains__`).
 - **Relaciones:** guarda sus **Muestras** en un diccionario `{id: muestra}` y una **Cola** de pendientes (composición).
 
 **Inspeccion** (`inspeccion.py`): une muestra, profesional, equipo, procedimiento y fecha. Valida todo en el constructor y después guarda ese contexto sin setters. Métodos: `ejecutar(observaciones)` y `cerrar()`.
@@ -122,6 +122,7 @@ Las tres interfaces están **separadas del dominio**, como pide la consigna: sol
 - **Consultas:** `listar_lotes()`, `listar_muestras()`, `listar_inspecciones()`, `listar_profesionales()`, `listar_equipos()`, `listar_procedimientos()` (todas con filtros `**kwargs`, por medio de `_filtrar`), `obtener_lote(id)`, `obtener_muestra(id)`, `reportes()` y `resumen()`.
 - **Índices AVL:** `equipos_por_calibracion()`, `equipos_vencidos_al(fecha)`, `equipos_que_vencen_entre(desde, hasta)`, `equipo_que_vence_primero(fecha)` (el árbol de equipos se mantiene al día al registrar cada uno), `reportes_entre(desde, hasta)`, `arbol_reportes_por_fecha()` y `arbol_lotes_por_produccion()`.
 - **Cola de prioridad:** `cola_atencion_reportes(desde=None, hasta=None)`.
+- **Conjuntos:** `profesionales_de_lote(lote)`, `equipos_de_lote(lote)`, `profesionales_en_comun(a, b)` (`&`) y `profesionales_solo_en(a, b)` (`-`).
 - **Serialización:** `exportar_reportes_json(ruta)`, `cargar_reportes_json(ruta)`, `guardar(ruta)` y `cargar(ruta)`.
 
 **Simulador** (`simulador.py`): genera casos al azar con un generador propio, `random.Random(semilla)`: `observaciones_visuales`, `observaciones_dimensionales`, `observaciones_para` y `simular_lote`. No es parte del dominio.
@@ -131,6 +132,8 @@ Las tres interfaces están **separadas del dominio**, como pide la consigna: sol
 - **Pila** (`pila.py`, LIFO: `push`, `pop`, `peek`, `isEmpty`, `size`) y **Cola** (`cola.py`, FIFO: `put`, `get`, `front`, `qsize`, `empty`, `full`, `maxsize` opcional), sobre una `ListaEnlazada`.
 - **NodoAVL** y **ArbolAVL** (`nodo_avl.py`, `arbol_avl.py`): árbol de búsqueda que se rebalancea con rotaciones; operaciones recursivas (`insertar`, `buscar`, `buscar_rango`, `eliminar`, `minimo`, `maximo`, recorridos) y `niveles()` (BFS con nuestra `Cola`). Claves repetidas en el mismo nodo.
 - **ColaPrioridad** (`cola_prioridad.py`): max-heap en una lista (`padre`, `hijo_izq`, `hijo_der`, `_subir`, `_bajar`, `insertar`, `extraer_maximo`, `ver_maximo`), con desempate por orden de llegada.
+
+**Entidad** (`entidad.py`): clase base de `Lote`, `Muestra`, `Profesional`, `Equipo`, `Procedimiento`, `Inspeccion` y `Reporte`. Define `__eq__` (mismo tipo y mismo `id`) y `__hash__` (`hash(id)`), así una entidad cargada con pickle o JSON es igual a la original y las entidades se pueden guardar en un `set`. `Defecto` no la hereda: no tiene id, y dos defectos con los mismos datos son dos defectos distintos.
 
 **Soporte:** `EstadoMuestra` y `EstadoLote` (enums), `validacion.py` (funciones de validación reutilizables) y `excepciones.py` (jerarquía con base `CalidadError` y `**detalles`: `DatosInvalidosError`, `EquipoNoAptoError`, `CertificacionNoVigenteError`, `TransicionIlegalError`, `InspeccionInvalidaError`, `EstructuraVaciaError`, `EstructuraLlenaError`).
 
@@ -166,6 +169,7 @@ Las tres interfaces están **separadas del dominio**, como pide la consigna: sol
 - **¿Por qué un AVL y no un árbol de búsqueda común?** Las fechas de calibración y de reportes llegan en orden, que es el peor caso de un árbol sin balance (queda como una lista y buscar es O(n)). El AVL se rebalancea con rotaciones y garantiza O(log n). El índice de equipos se mantiene al día porque los equipos siempre se crean por `Empresa`; el de reportes se arma al consultar, porque los reportes los crea la `Muestra` al cerrarse.
 - **¿Por qué una cola de prioridad para los reportes?** Hay que atender primero al más grave, no al que llegó antes. La prioridad es la tupla (gravedad máxima, suma de gravedades) y los empates salen por orden de llegada.
 - **¿Dónde va el azar?** Solo en `Simulador`, nunca en el dominio; los tests usan semillas fijas.
+- **¿Cuándo dos entidades son iguales?** Cuando tienen el mismo id (clase base `Entidad`). Si se define `__eq__`, Python anula el `__hash__` heredado, así que se definen los dos juntos y sobre el id, que es inmutable. Así `set(reportes) == set(reportes_cargados_del_json)` y una empresa cargada con pickle sigue reconociendo sus objetos. `Defecto` queda fuera a propósito: compararlo por valor fusionaría defectos distintos en un `set`.
 - **¿Por qué `App` hereda de 6 clases (herencia múltiple)?** Cada página de la interfaz es una clase con sus propios métodos (patrón *mixin*), y `App` los combina en una sola ventana. Así cada página está en su archivo, en lugar de un único archivo de 1400 líneas. Las páginas no repiten nombres de métodos, así que el MRO (`App → PaginaPanel → … → Archivos → object`) no genera ambigüedades. No es una relación "es un" en sentido estricto: se usa la herencia para reunir comportamiento.
 
 ---
@@ -186,12 +190,12 @@ Resumen; el detalle de cada tema y subtema del programa, con el archivo, la clas
 
 | Unidad del programa | Dónde se aplica (ejemplos) |
 |---|---|
-| 1-2. Objetos y tipos de datos | `isinstance`/`is`; tuplas para devolver datos inmutables; listas, diccionarios y strings (`isalpha`, `join`, f-strings) |
+| 1-2. Objetos y tipos de datos | `isinstance`, `is` frente a `==` (lo cargado con pickle no es el mismo objeto pero sí la misma entidad); tuplas para devolver datos inmutables; listas, diccionarios y strings (`isalpha`, `join`, f-strings) |
 | 3. Bibliotecas y módulos | Módulos y paquetes propios (`classes/`, `front/`, `front/paginas/`); `datetime`, `uuid`, `abc`, `json`, `pickle`, `random`, `functools`, `os`, `tkinter`, `pytest` |
 | 4. Funciones | `lambda`, `map`, `filter`, `reduce`, `zip`, `sorted(key=...)`, `any`/`all`, `*args`, `**kwargs`, funciones como valores (`intentar` en `main.py`), `yield` |
 | 5. Excepciones | Jerarquía propia con base `CalidadError`, `raise ... from e`, `try/except/finally` |
-| 6. POO | Encapsulamiento con `@property`, herencia simple, multinivel y múltiple (`App` en `front/clase_app.py` hereda de las 6 clases de página), polimorfismo, clase abstracta (`ABC`), `@staticmethod`/`@classmethod`, métodos mágicos (`__len__`, `__iter__`, `__contains__`, `__lt__`, `__bool__`, `__repr__`, `__str__`), composición y agregación |
-| 7. Estructuras de datos | Listas enlazadas, pila, cola, árbol AVL, heap, diccionarios, tuplas |
+| 6. POO | Encapsulamiento con `@property`, herencia simple, multinivel y múltiple (`App` en `front/clase_app.py` hereda de las 6 clases de página; `Procedimiento(Entidad, ABC)`), polimorfismo, clase abstracta (`ABC`), `@staticmethod`/`@classmethod`, métodos mágicos (`__eq__`, `__hash__`, `__len__`, `__iter__`, `__contains__`, `__lt__`, `__bool__`, `__repr__`, `__str__`), composición y agregación |
+| 7. Estructuras de datos | Listas enlazadas, pila, cola, árbol AVL, heap, diccionarios, tuplas, conjuntos (`set` con `&`, `^`, `-`, `update` y entidades hashables) |
 | 8. Recursividad | Todas las operaciones del AVL; versiones recursivas de `ListaEnlazada` frente a las iterativas |
 | 10-11. Búsqueda y complejidad | Búsqueda secuencial (lista enlazada) frente a búsqueda en el AVL O(log n); heap O(log n) |
 
@@ -205,7 +209,7 @@ El modelo de dominio, las clases base y los tests iniciales los construimos noso
 - la interfaz gráfica (`interfaz.py` y `front/`) y el menú por consola (`consola.py`);
 - el `Simulador` (`classes/simulador.py`);
 - la serialización con JSON y pickle;
-- `Nodo`, `ListaEnlazada`, el árbol AVL y la cola de prioridad;
+- `Nodo`, `ListaEnlazada`, el árbol AVL, la cola de prioridad y los conjuntos (`Entidad` y las operaciones con `set`);
 - buena parte de los tests nuevos;
 - la reorganización de `main.py`, este README y las guías `DEFENSA_ORAL`.
 
@@ -221,13 +225,14 @@ Después los revisamos, los adaptamos al resto del sistema y los probamos con `p
 - En la primera versión del menú, escribir mal un dato después de iniciar una inspección dejaba la muestra trabada en `EN_INSPECCION`.
 - En la interfaz: crear muestras que no entraban dejaba creadas solo algunas; se podía inspeccionar sin observaciones; al fallar la exportación se mostraba "None"; dos profesionales con el mismo nombre no se distinguían.
 - El árbol binario de búsqueda inicial se degeneraba en una lista con claves repetidas u ordenadas; se reemplazó por un AVL.
+- Al cargar un reporte desde JSON, su id volvía como texto en lugar de `UUID`: con `__eq__` por id, el reporte cargado no habría sido igual al original. Se convierte al reconstruirlo.
 - La guía de defensa anterior tenía ejemplos de código que fallaban (métodos inexistentes y argumentos mal pasados); se rehízo verificando cada ejemplo.
 
 **Dónde aplicar los conceptos teóricos**
 - Reemplazar bucles por `map`, `filter` y `lambda`, sin usar `map` solo para provocar efectos.
 - Usar la pila y la cola en el dominio (historial de estados y muestras pendientes), con los nombres de la cátedra.
 - Elegir el AVL para consultas por fecha y el heap para el orden de atención.
-- Sumar usos naturales de temas que faltaban: `*args`, `__contains__`, `__lt__` con `sorted`, `reduce` y `finally`.
+- Sumar usos naturales de temas que faltaban: `*args`, `__contains__`, `__lt__` con `sorted`, `reduce`, `finally`, y `__eq__` con `__hash__` para usar entidades en conjuntos.
 - Elegir qué guardar con JSON y qué con pickle; ubicar el azar en un `Simulador` con semilla.
 - Agregar tests para las pruebas mínimas de la consigna y quitar tests repetidos o sin uso.
 

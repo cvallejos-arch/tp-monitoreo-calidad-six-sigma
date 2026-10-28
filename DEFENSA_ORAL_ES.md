@@ -29,13 +29,13 @@ Para cada tema del programa de **Estructuras de Datos y Programación**: **dónd
 | Subtema | Dónde | Por qué ahí |
 |---|---|---|
 | `isinstance` | `Profesional.agregar_certificacion`, `Nodo.set_siguiente`, `Inspeccion.ejecutar` (defectos ajenos), `Empresa.cargar` | Verificar el **tipo** del objeto antes de aceptarlo protege las reglas (por ejemplo, que un archivo cargado sea de verdad una `Empresa`) |
-| `is` vs `==` | `main.py` sección 6: `cargada is not empresa`; `Lote.siguiente_muestra_pendiente` en los tests (`is primera`) | Distinguir **identidad** (el mismo objeto) de **igualdad** (mismo contenido): lo cargado con pickle es otro objeto con el mismo contenido |
+| `is` vs `==` | `main.py` sección 6: la muestra cargada con pickle da `m0_cargada is m0` → `False` y `m0_cargada == m0` → `True` | Distinguir **identidad** (`is`: el mismo objeto en memoria) de **igualdad** (`==`): lo cargado es otro objeto, pero la misma entidad, porque `Entidad.__eq__` compara por id |
 | `type(e).__name__` | `intentar` en `main.py`, `App._ejecutar` en `front/clase_app.py`, `ejecutar_opcion` en `consola.py` | Mostrar al usuario qué clase de error ocurrió |
 
 ### Unidad 2 — Tipos de datos
 | Subtema | Dónde | Por qué ahí |
 |---|---|---|
-| Inmutables: **tuplas** | `Muestra.defectos`, `Lote.muestras`, `Reporte.defectos`, `Pila.historial()` | Se devuelven tuplas para que nadie modifique el estado interno desde afuera (encapsulamiento) |
+| Inmutables: **tuplas** | `Muestra.defectos`, `Lote.muestras`, `Reporte.defectos`, `Pila.historial()` | Se devuelven tuplas para que nadie modifique el estado interno desde afuera (encapsulamiento), como el ejemplo `Ciudad` de la clase 9 con `tuple(coordenadas)` |
 | Mutables: listas y diccionarios | Listas internas (`Muestra._defectos`), registro de `Empresa` | Adentro del objeto se necesita poder agregar elementos |
 | Strings | `validar_texto` (`isalpha`), `validar_nombre_tecnico` (`isalnum`), `ListaEnlazada.__str__` (`join`), f-strings en todos los mensajes | Validar nombres ("Ana 2" no es un nombre; "ISO 9001" sí es un nombre técnico) y armar mensajes claros |
 | Copia superficial | `Profesional.certificaciones` devuelve `dict(...)` | Una copia del diccionario: modificarla no cambia al profesional |
@@ -44,7 +44,7 @@ Para cada tema del programa de **Estructuras de Datos y Programación**: **dónd
 ### Unidad 3 — Bibliotecas y módulos
 **Módulos y paquetes propios:** `classes/` (el dominio), `front/` y `front/paginas/` (la interfaz, un módulo por página); `interfaz.py` solo importa `App` y la abre.
 
-**Bibliotecas:** `datetime` (`date`, `timedelta`: calibraciones, certificaciones, vencimientos) · `uuid` (ids únicos, regla 1) · `abc` (clase abstracta) · `json` y `pickle` (serialización) · `random` (simulador con semilla) · `functools.reduce` · `os` (borrar el archivo temporal en `main.py`) · `tkinter` (interfaz) · `pytest` (500 tests).
+**Bibliotecas:** `datetime` (`date`, `timedelta`: calibraciones, certificaciones, vencimientos) · `uuid` (ids únicos, regla 1) · `abc` (clase abstracta) · `json` y `pickle` (serialización) · `random` (simulador con semilla) · `functools.reduce` · `os` (borrar el archivo temporal en `main.py`) · `tkinter` (interfaz) · `pytest` (521 tests).
 
 ### Unidad 4 — Funciones
 | Subtema | Dónde | Por qué ahí |
@@ -83,10 +83,10 @@ Para cada tema del programa de **Estructuras de Datos y Programación**: **dónd
 | Herencia simple | `Procedimiento` → `ProcedimientoVisual` / `ProcedimientoDimensional`; `Defecto` → `DefectoVisual` / `DefectoDimensional` | Regla "es un": un procedimiento visual **es un** procedimiento |
 | Herencia multinivel | `Exception` → `CalidadError` → `DatosInvalidosError` (y las demás) | Capturar por nivel: todas las del sistema o una en particular |
 | `super()` | `ProcedimientoVisual.__init__`, `DefectoDimensional.__init__` y `to_dict` | Reutilizar lo del padre y agregar lo propio |
-| Herencia múltiple y MRO | `App` (`front/clase_app.py`) hereda de `PaginaPanel`, `PaginaRegistro`, `PaginaInspeccion`, `PaginaLotes`, `PaginaReportes` y `Archivos`. MRO: `App → PaginaPanel → … → Archivos → object` | Patrón *mixin*: cada página aporta sus métodos y `App` los reúne en una ventana, en lugar de un archivo de 1400 líneas. Ninguna página repite nombres de métodos, así que el MRO no genera ambigüedades. No es un "es un" estricto: la herencia se usa para reunir comportamiento. En el dominio no se usa herencia múltiple |
+| Herencia múltiple y MRO | `App` (`front/clase_app.py`) hereda de `PaginaPanel`, `PaginaRegistro`, `PaginaInspeccion`, `PaginaLotes`, `PaginaReportes` y `Archivos`. MRO: `App → PaginaPanel → … → Archivos → object` | Patrón *mixin*: cada página aporta sus métodos y `App` los reúne en una ventana, en lugar de un archivo de 1400 líneas. Ninguna página repite nombres de métodos, así que el MRO no genera ambigüedades. No es un "es un" estricto: la herencia se usa para reunir comportamiento. En el dominio también: `Procedimiento(Entidad, ABC)` hereda la igualdad por id de `Entidad` y el contrato abstracto de `ABC` |
 | Clase abstracta | `Procedimiento(ABC)` con `@abstractmethod evaluar` | No se puede crear un procedimiento genérico (caso 1e) |
 | Polimorfismo | `evaluar()`, `copia()`, `to_dict()` | La inspección llama a `evaluar()` sin saber qué procedimiento es |
-| Métodos mágicos | `__len__` y `__iter__` (`ListaEnlazada`, `Pila`, `Cola`, `ArbolAVL`), `__contains__` (`muestra in lote`), `__lt__` (`Defecto`), `__bool__` (`ColaPrioridad`: `while cola:`), `__str__`, `__repr__` | Que nuestras clases funcionen con `len`, `for`, `in`, `<`, `sorted` y `while` |
+| Métodos mágicos | `__eq__` y `__hash__` (`Entidad`), `__len__` y `__iter__` (`ListaEnlazada`, `Pila`, `Cola`, `ArbolAVL`), `__contains__` (`muestra in lote`), `__lt__` (`Defecto`), `__bool__` (`ColaPrioridad`: `while cola:`), `__str__`, `__repr__` | Que nuestras clases funcionen con `==`, `set`, `len`, `for`, `in`, `<`, `sorted` y `while` |
 | Composición | Lote–Muestra (el lote las crea), Muestra–Pila, Lote–Cola, Pila/Cola–ListaEnlazada | La parte no existe sin el todo |
 | Agregación | Profesional–Certificación | La certificación se crea afuera y se agrega |
 | Asociación | `Inspeccion` con muestra, profesional, equipo y procedimiento | Los usa, pero cada uno existe por su cuenta |
@@ -101,7 +101,8 @@ Para cada tema del programa de **Estructuras de Datos y Programación**: **dónd
 | Cola (FIFO) | Muestras pendientes de `Lote`; `ArbolAVL.niveles()` (recorrido BFS) | Inspeccionar en orden de llegada |
 | Árbol AVL | `Empresa`: equipos por fecha de calibración, reportes por fecha, lotes por producción; `Lote`: defectos por gravedad | Las fechas llegan en orden: un árbol sin balance quedaría como una lista. Cubre los ejercicios de la clase 11: `minimo`, `maximo`, `buscar` e `insertar` recursivos y `entre(a, b)` (nuestro `buscar_rango`). A diferencia del ABB de la clase, una clave repetida no se descarta: se guarda en el mismo nodo, porque hay muchos defectos con la misma gravedad |
 | Heap (cola de prioridad) | `Empresa.cola_atencion_reportes()` | Atender primero al más grave, no al que llegó antes |
-| Conjuntos | Todavía no se dieron en clase | Cuando se den: `__eq__` y `__hash__` por id en las entidades |
+| Conjuntos | `Lote.tipos_de_defecto()` (`set()` + `update`), `tipos_en_comun` (`&`), `tipos_exclusivos` (`^`); `Empresa.profesionales_de_lote`, `equipos_de_lote`, `profesionales_en_comun` (`&`), `profesionales_solo_en` (`-`); `main.py` 5.9 | Comparar lotes sin repetir elementos, como el ejercicio *Curso* de la clase 9 |
+| Entidades hashables | Clase base `Entidad` (`entidad.py`): `__eq__` por tipo e id, `__hash__` = `hash(id)` | Si se define `__eq__`, Python anula el `__hash__`: se definen los dos sobre el id, que es inmutable (como el legajo del `Estudiante` de la clase). Por eso `set(reportes) == set(reportes_cargados_del_json)`. `Defecto` queda afuera: compararlo por valor fusionaría defectos distintos en un `set` |
 | Vectores y matrices | No se usan | El dominio no tiene datos en forma de grilla |
 
 ### Unidad 8 — Recursividad
@@ -123,7 +124,7 @@ No se usa. La consigna excluye los gráficos de control, y el panel de la interf
 |---|---|---|
 | Búsqueda secuencial | `ListaEnlazada.buscar` | O(n) |
 | Búsqueda en árbol balanceado (equivalente a la binaria) | `ArbolAVL.buscar` y `buscar_rango` | O(log n) garantizado |
-| Búsqueda por clave en diccionario | `Lote.__contains__`, `Empresa.obtener_lote` | O(1) |
+| Búsqueda por clave en diccionario o conjunto (tabla hash) | `Lote.__contains__`, `Empresa.obtener_lote`, `Empresa._inspecciones_de_lote` (set de ids) | O(1) |
 | Ordenamiento | `sorted` (`Reporte`, `Profesional`), recorrido in-orden del AVL, extracción sucesiva del heap | El AVL entrega los datos ya ordenados |
 | Algoritmos manuales (bubble, quick, merge) | No se implementan | No aportan al dominio; `sorted` y las estructuras ya ordenan |
 
@@ -267,4 +268,5 @@ py -c "from datetime import date; from classes.empresa import Empresa; from clas
 - **¿Por qué JSON y pickle?** JSON para los reportes, que tiene que poder leer cualquier persona; pickle para retomar la empresa completa, con sus objetos y relaciones.
 - **¿Dónde está la recursión?** En todas las operaciones del AVL y en las versiones recursivas de la lista enlazada (comparadas con las iterativas en `main.py` 5.1). Cumple las 3 condiciones: caso base (`None` o la clave encontrada), caso recursivo (un subárbol) y progreso (cada llamada baja un nivel).
 - **¿Por qué `App` hereda de 6 clases?** Es herencia múltiple con el patrón *mixin*: cada página de `front/paginas/` aporta sus métodos y `App` los reúne. Ninguna página repite nombres, así que el MRO no tiene ambigüedades.
+- **¿Por qué `__eq__` y `__hash__` juntos, y por id?** Si se define solo `__eq__`, Python anula el `__hash__` y el objeto ya no entra en un `set`. Se basan en el id porque nunca cambia, y así se cumple que `a == b` implica `hash(a) == hash(b)`. Sirve para reconocer una entidad cargada con pickle o JSON y para operar con conjuntos de profesionales o equipos.
 - **¿Cómo se usó la IA?** Está documentado en el README (sección 10): qué se generó, qué errores ayudó a detectar y cómo lo revisamos.

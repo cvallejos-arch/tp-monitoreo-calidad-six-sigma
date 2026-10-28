@@ -31,13 +31,13 @@ For each topic of the **Data Structures and Programming** syllabus: **where** it
 | Subtopic | Where | Why there |
 |---|---|---|
 | `isinstance` | `Profesional.agregar_certificacion`, `Nodo.set_siguiente`, `Inspeccion.ejecutar` (foreign defects), `Empresa.cargar` | Checking the object's **type** before accepting it protects the rules (e.g. that a loaded file really is an `Empresa`) |
-| `is` vs `==` | `main.py` section 6: `cargada is not empresa`; tests use `is` with the queue | Distinguish **identity** (same object) from **equality** (same content): what pickle loads is a different object with the same content |
+| `is` vs `==` | `main.py` section 6: the sample loaded with pickle gives `m0_cargada is m0` → `False` and `m0_cargada == m0` → `True` | Distinguish **identity** (`is`: the same object in memory) from **equality** (`==`): what is loaded is a different object but the same entity, because `Entidad.__eq__` compares by id |
 | `type(e).__name__` | `intentar` in `main.py`, `App._ejecutar` in `front/clase_app.py`, `ejecutar_opcion` in `consola.py` | Show the user which kind of error happened |
 
 ### Unit 2 — Data types
 | Subtopic | Where | Why there |
 |---|---|---|
-| Immutable: **tuples** | `Muestra.defectos`, `Lote.muestras`, `Reporte.defectos`, `Pila.historial()` | Tuples are returned so nobody can modify the internal state from outside (encapsulation) |
+| Immutable: **tuples** | `Muestra.defectos`, `Lote.muestras`, `Reporte.defectos`, `Pila.historial()` | Tuples are returned so nobody can modify the internal state from outside (encapsulation), like the `Ciudad` example from class 9 with `tuple(coordenadas)` |
 | Mutable: lists and dicts | Internal lists (`Muestra._defectos`), the `Empresa` registry | Inside the object we need to add elements |
 | Strings | `validar_texto` (`isalpha`), `validar_nombre_tecnico` (`isalnum`), `ListaEnlazada.__str__` (`join`), f-strings in every message | Validate names ("Ana 2" is not a name; "ISO 9001" is a valid technical name) and build clear messages |
 | Shallow copy | `Profesional.certificaciones` returns `dict(...)` | A copy of the dict: changing it does not change the inspector |
@@ -46,7 +46,7 @@ For each topic of the **Data Structures and Programming** syllabus: **where** it
 ### Unit 3 — Libraries and modules
 **Our own modules and packages:** `classes/` (the domain), `front/` and `front/paginas/` (the GUI, one module per page); `interfaz.py` only imports `App` and opens it.
 
-**Libraries:** `datetime` (`date`, `timedelta`: calibrations, certifications, expiry) · `uuid` (unique ids, rule 1) · `abc` (abstract class) · `json` and `pickle` (serialization) · `random` (seeded simulator) · `functools.reduce` · `os` (delete the temporary file in `main.py`) · `tkinter` (GUI) · `pytest` (500 tests).
+**Libraries:** `datetime` (`date`, `timedelta`: calibrations, certifications, expiry) · `uuid` (unique ids, rule 1) · `abc` (abstract class) · `json` and `pickle` (serialization) · `random` (seeded simulator) · `functools.reduce` · `os` (delete the temporary file in `main.py`) · `tkinter` (GUI) · `pytest` (521 tests).
 
 ### Unit 4 — Functions
 | Subtopic | Where | Why there |
@@ -85,10 +85,10 @@ For each topic of the **Data Structures and Programming** syllabus: **where** it
 | Single inheritance | `Procedimiento` → `ProcedimientoVisual` / `ProcedimientoDimensional`; `Defecto` → `DefectoVisual` / `DefectoDimensional` | "Is a" rule: a visual procedure **is a** procedure |
 | Multilevel inheritance | `Exception` → `CalidadError` → `DatosInvalidosError` (and the others) | Catch by level: all system errors or a specific one |
 | `super()` | `ProcedimientoVisual.__init__`, `DefectoDimensional.__init__` and `to_dict` | Reuse the parent's code and add our own |
-| Multiple inheritance and MRO | `App` (`front/clase_app.py`) inherits from `PaginaPanel`, `PaginaRegistro`, `PaginaInspeccion`, `PaginaLotes`, `PaginaReportes` and `Archivos`. MRO: `App → PaginaPanel → … → Archivos → object` | *Mixin* pattern: each page contributes its methods and `App` combines them into one window, instead of a 1400-line file. No page repeats a method name, so the MRO has no ambiguity. It is not a strict "is a": inheritance is used to combine behavior. The domain does not use multiple inheritance |
+| Multiple inheritance and MRO | `App` (`front/clase_app.py`) inherits from `PaginaPanel`, `PaginaRegistro`, `PaginaInspeccion`, `PaginaLotes`, `PaginaReportes` and `Archivos`. MRO: `App → PaginaPanel → … → Archivos → object` | *Mixin* pattern: each page contributes its methods and `App` combines them into one window, instead of a 1400-line file. No page repeats a method name, so the MRO has no ambiguity. It is not a strict "is a": inheritance is used to combine behavior. The domain uses it too: `Procedimiento(Entidad, ABC)` inherits id-based equality from `Entidad` and the abstract contract from `ABC` |
 | Abstract class | `Procedimiento(ABC)` with `@abstractmethod evaluar` | A generic procedure cannot be created (case 1e) |
 | Polymorphism | `evaluar()`, `copia()`, `to_dict()` | The inspection calls `evaluar()` without knowing which procedure it is |
-| Magic methods | `__len__` and `__iter__` (`ListaEnlazada`, `Pila`, `Cola`, `ArbolAVL`), `__contains__` (`muestra in lote`), `__lt__` (`Defecto`), `__bool__` (`ColaPrioridad`: `while cola:`), `__str__`, `__repr__` | Our classes work with `len`, `for`, `in`, `<`, `sorted` and `while` |
+| Magic methods | `__eq__` and `__hash__` (`Entidad`), `__len__` and `__iter__` (`ListaEnlazada`, `Pila`, `Cola`, `ArbolAVL`), `__contains__` (`muestra in lote`), `__lt__` (`Defecto`), `__bool__` (`ColaPrioridad`: `while cola:`), `__str__`, `__repr__` | Our classes work with `==`, `set`, `len`, `for`, `in`, `<`, `sorted` and `while` |
 | Composition | Batch–Sample (the batch creates them), Sample–Stack, Batch–Queue, Stack/Queue–LinkedList | The part does not exist without the whole |
 | Aggregation | Inspector–Certification | The certification is created outside and added |
 | Association | `Inspeccion` with sample, inspector, instrument and procedure | It uses them, but each exists on its own |
@@ -103,7 +103,8 @@ For each topic of the **Data Structures and Programming** syllabus: **where** it
 | Queue (FIFO) | `Lote` pending samples; `ArbolAVL.niveles()` (BFS traversal) | Inspect in arrival order |
 | AVL tree | `Empresa`: instruments by calibration date, reports by date, batches by production; `Lote`: defects by severity | Dates arrive in order: an unbalanced tree would become a list. It covers the class 11 exercises: recursive `minimo`, `maximo`, `buscar` and `insertar`, and `entre(a, b)` (our `buscar_rango`). Unlike the BST in class, a repeated key is not discarded: it is stored in the same node, because many defects share a severity |
 | Heap (priority queue) | `Empresa.cola_atencion_reportes()` | Handle the most severe first, not the one that arrived first |
-| Sets | Not taught yet | When taught: `__eq__` and `__hash__` by id in the entities |
+| Sets | `Lote.tipos_de_defecto()` (`set()` + `update`), `tipos_en_comun` (`&`), `tipos_exclusivos` (`^`); `Empresa.profesionales_de_lote`, `equipos_de_lote`, `profesionales_en_comun` (`&`), `profesionales_solo_en` (`-`); `main.py` 5.9 | Compare batches without repeated elements, like the *Curso* exercise from class 9 |
+| Hashable entities | Base class `Entidad` (`entidad.py`): `__eq__` by type and id, `__hash__` = `hash(id)` | Defining `__eq__` makes Python drop `__hash__`: both are defined on the id, which is immutable (like the student number in the class `Estudiante` example). That's why `set(reportes) == set(reports_loaded_from_json)`. `Defecto` is left out: comparing it by value would merge different defects in a `set` |
 | Vectors and matrices | Not used | The domain has no grid-shaped data |
 
 ### Unit 8 — Recursion
@@ -125,7 +126,7 @@ Not used. The assignment excludes control charts, and the GUI dashboard (`front/
 |---|---|---|
 | Sequential search | `ListaEnlazada.buscar` | O(n) |
 | Balanced-tree search (equivalent to binary search) | `ArbolAVL.buscar` and `buscar_rango` | O(log n) guaranteed |
-| Dictionary lookup | `Lote.__contains__`, `Empresa.obtener_lote` | O(1) |
+| Lookup by key in a dict or set (hash table) | `Lote.__contains__`, `Empresa.obtener_lote`, `Empresa._inspecciones_de_lote` (set of ids) | O(1) |
 | Sorting | `sorted` (`Reporte`, `Profesional`), AVL in-order traversal, successive heap extraction | The AVL returns the data already sorted |
 | Manual algorithms (bubble, quick, merge) | Not implemented | They add nothing to the domain; `sorted` and the structures already sort |
 
@@ -269,4 +270,5 @@ py -c "from datetime import date; from classes.empresa import Empresa; from clas
 - **Why JSON and pickle?** JSON for the reports, which anyone must be able to read; pickle to resume the whole company with its objects and relations.
 - **Where is the recursion?** In every AVL operation and in the recursive versions of the linked list (compared with the iterative ones in `main.py` 5.1). It meets the 3 conditions: base case (`None` or the key found), recursive case (a subtree) and progress (each call goes down one level).
 - **Why does `App` inherit from 6 classes?** It is multiple inheritance with the *mixin* pattern: each page in `front/paginas/` contributes its methods and `App` combines them. No page repeats a name, so the MRO has no ambiguity.
+- **Why `__eq__` and `__hash__` together, and by id?** If only `__eq__` is defined, Python drops `__hash__` and the object can no longer go into a `set`. They rely on the id because it never changes, so `a == b` implies `hash(a) == hash(b)`. It lets us recognize an entity loaded with pickle or JSON and work with sets of inspectors or instruments.
 - **How was AI used?** It is documented in the README (section 10): what was generated, which errors it helped detect and how we reviewed it.

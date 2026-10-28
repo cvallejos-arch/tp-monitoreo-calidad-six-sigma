@@ -31,13 +31,13 @@ Pour chaque thème du programme de **Structures de données et programmation** :
 | Sous-thème | Où | Pourquoi là |
 |---|---|---|
 | `isinstance` | `Profesional.agregar_certificacion`, `Nodo.set_siguiente`, `Inspeccion.ejecutar` (défauts étrangers), `Empresa.cargar` | Vérifier le **type** de l'objet avant de l'accepter protège les règles (par exemple, qu'un fichier chargé soit vraiment une `Empresa`) |
-| `is` vs `==` | `main.py` section 6 : `cargada is not empresa` ; les tests utilisent `is` avec la file | Distinguer **identité** (le même objet) et **égalité** (même contenu) : ce que pickle charge est un autre objet au même contenu |
+| `is` vs `==` | `main.py` section 6 : l'échantillon chargé avec pickle donne `m0_cargada is m0` → `False` et `m0_cargada == m0` → `True` | Distinguer **identité** (`is` : le même objet en mémoire) et **égalité** (`==`) : ce qui est chargé est un autre objet mais la même entité, car `Entidad.__eq__` compare par identifiant |
 | `type(e).__name__` | `intentar` dans `main.py`, `App._ejecutar` dans `front/clase_app.py`, `ejecutar_opcion` dans `consola.py` | Montrer à l'utilisateur quel type d'erreur s'est produit |
 
 ### Unité 2 — Types de données
 | Sous-thème | Où | Pourquoi là |
 |---|---|---|
-| Immuables : **tuples** | `Muestra.defectos`, `Lote.muestras`, `Reporte.defectos`, `Pila.historial()` | On renvoie des tuples pour que personne ne modifie l'état interne de l'extérieur (encapsulation) |
+| Immuables : **tuples** | `Muestra.defectos`, `Lote.muestras`, `Reporte.defectos`, `Pila.historial()` | On renvoie des tuples pour que personne ne modifie l'état interne de l'extérieur (encapsulation), comme l'exemple `Ciudad` de la classe 9 avec `tuple(coordenadas)` |
 | Mutables : listes et dictionnaires | Listes internes (`Muestra._defectos`), registre d'`Empresa` | À l'intérieur de l'objet, il faut pouvoir ajouter des éléments |
 | Chaînes | `validar_texto` (`isalpha`), `validar_nombre_tecnico` (`isalnum`), `ListaEnlazada.__str__` (`join`), f-strings dans tous les messages | Valider les noms (« Ana 2 » n'est pas un nom ; « ISO 9001 » est un nom technique valide) et construire des messages clairs |
 | Copie superficielle | `Profesional.certificaciones` renvoie `dict(...)` | Une copie du dictionnaire : la modifier ne change pas l'inspecteur |
@@ -46,7 +46,7 @@ Pour chaque thème du programme de **Structures de données et programmation** :
 ### Unité 3 — Bibliothèques et modules
 **Modules et paquets propres :** `classes/` (le domaine), `front/` et `front/paginas/` (l'interface, un module par page) ; `interfaz.py` se contente d'importer `App` et de l'ouvrir.
 
-**Bibliothèques :** `datetime` (`date`, `timedelta` : étalonnages, certifications, échéances) · `uuid` (identifiants uniques, règle 1) · `abc` (classe abstraite) · `json` et `pickle` (sérialisation) · `random` (simulateur avec graine) · `functools.reduce` · `os` (supprimer le fichier temporaire dans `main.py`) · `tkinter` (interface graphique) · `pytest` (500 tests).
+**Bibliothèques :** `datetime` (`date`, `timedelta` : étalonnages, certifications, échéances) · `uuid` (identifiants uniques, règle 1) · `abc` (classe abstraite) · `json` et `pickle` (sérialisation) · `random` (simulateur avec graine) · `functools.reduce` · `os` (supprimer le fichier temporaire dans `main.py`) · `tkinter` (interface graphique) · `pytest` (521 tests).
 
 ### Unité 4 — Fonctions
 | Sous-thème | Où | Pourquoi là |
@@ -85,10 +85,10 @@ Pour chaque thème du programme de **Structures de données et programmation** :
 | Héritage simple | `Procedimiento` → `ProcedimientoVisual` / `ProcedimientoDimensional` ; `Defecto` → `DefectoVisual` / `DefectoDimensional` | Règle « est un » : une procédure visuelle **est une** procédure |
 | Héritage multiniveau | `Exception` → `CalidadError` → `DatosInvalidosError` (et les autres) | Capturer par niveau : toutes les erreurs du système ou une en particulier |
 | `super()` | `ProcedimientoVisual.__init__`, `DefectoDimensional.__init__` et `to_dict` | Réutiliser le code du parent et ajouter le sien |
-| Héritage multiple et MRO | `App` (`front/clase_app.py`) hérite de `PaginaPanel`, `PaginaRegistro`, `PaginaInspeccion`, `PaginaLotes`, `PaginaReportes` et `Archivos`. MRO : `App → PaginaPanel → … → Archivos → object` | Patron *mixin* : chaque page apporte ses méthodes et `App` les réunit dans une seule fenêtre, au lieu d'un fichier de 1400 lignes. Aucune page ne répète un nom de méthode, donc le MRO ne crée pas d'ambiguïté. Ce n'est pas un « est un » strict : l'héritage sert à réunir des comportements. Le domaine n'utilise pas l'héritage multiple |
+| Héritage multiple et MRO | `App` (`front/clase_app.py`) hérite de `PaginaPanel`, `PaginaRegistro`, `PaginaInspeccion`, `PaginaLotes`, `PaginaReportes` et `Archivos`. MRO : `App → PaginaPanel → … → Archivos → object` | Patron *mixin* : chaque page apporte ses méthodes et `App` les réunit dans une seule fenêtre, au lieu d'un fichier de 1400 lignes. Aucune page ne répète un nom de méthode, donc le MRO ne crée pas d'ambiguïté. Ce n'est pas un « est un » strict : l'héritage sert à réunir des comportements. Le domaine l'utilise aussi : `Procedimiento(Entidad, ABC)` hérite de l'égalité par identifiant d'`Entidad` et du contrat abstrait d'`ABC` |
 | Classe abstraite | `Procedimiento(ABC)` avec `@abstractmethod evaluar` | On ne peut pas créer une procédure générique (cas 1e) |
 | Polymorphisme | `evaluar()`, `copia()`, `to_dict()` | L'inspection appelle `evaluar()` sans savoir de quelle procédure il s'agit |
-| Méthodes spéciales | `__len__` et `__iter__` (`ListaEnlazada`, `Pila`, `Cola`, `ArbolAVL`), `__contains__` (`muestra in lote`), `__lt__` (`Defecto`), `__bool__` (`ColaPrioridad` : `while cola:`), `__str__`, `__repr__` | Nos classes fonctionnent avec `len`, `for`, `in`, `<`, `sorted` et `while` |
+| Méthodes spéciales | `__eq__` et `__hash__` (`Entidad`), `__len__` et `__iter__` (`ListaEnlazada`, `Pila`, `Cola`, `ArbolAVL`), `__contains__` (`muestra in lote`), `__lt__` (`Defecto`), `__bool__` (`ColaPrioridad` : `while cola:`), `__str__`, `__repr__` | Nos classes fonctionnent avec `==`, `set`, `len`, `for`, `in`, `<`, `sorted` et `while` |
 | Composition | Lot–Échantillon (le lot les crée), Échantillon–Pile, Lot–File, Pile/File–ListeChaînée | La partie n'existe pas sans le tout |
 | Agrégation | Inspecteur–Certification | La certification est créée à l'extérieur puis ajoutée |
 | Association | `Inspeccion` avec échantillon, inspecteur, instrument et procédure | Elle les utilise, mais chacun existe indépendamment |
@@ -103,7 +103,8 @@ Pour chaque thème du programme de **Structures de données et programmation** :
 | File (FIFO) | Échantillons en attente de `Lote` ; `ArbolAVL.niveles()` (parcours en largeur) | Inspecter dans l'ordre d'arrivée |
 | Arbre AVL | `Empresa` : instruments par date d'étalonnage, rapports par date, lots par production ; `Lote` : défauts par gravité | Les dates arrivent dans l'ordre : un arbre non équilibré deviendrait une liste. Il couvre les exercices de la classe 11 : `minimo`, `maximo`, `buscar` et `insertar` récursifs, et `entre(a, b)` (notre `buscar_rango`). Contrairement à l'ABR du cours, une clé répétée n'est pas ignorée : elle est stockée dans le même nœud, car beaucoup de défauts ont la même gravité |
 | Tas (file de priorité) | `Empresa.cola_atencion_reportes()` | Traiter d'abord le plus grave, pas le premier arrivé |
-| Ensembles | Pas encore vus en cours | Quand ils seront vus : `__eq__` et `__hash__` par identifiant dans les entités |
+| Ensembles | `Lote.tipos_de_defecto()` (`set()` + `update`), `tipos_en_comun` (`&`), `tipos_exclusivos` (`^`) ; `Empresa.profesionales_de_lote`, `equipos_de_lote`, `profesionales_en_comun` (`&`), `profesionales_solo_en` (`-`) ; `main.py` 5.9 | Comparer des lots sans éléments répétés, comme l'exercice *Curso* de la classe 9 |
+| Entités hachables | Classe de base `Entidad` (`entidad.py`) : `__eq__` par type et identifiant, `__hash__` = `hash(id)` | Définir `__eq__` fait que Python annule `__hash__` : on définit les deux sur l'identifiant, qui est immuable (comme le numéro d'étudiant de l'exemple `Estudiante`). D'où `set(reportes) == set(rapports_chargés_du_json)`. `Defecto` est laissé de côté : le comparer par valeur fusionnerait des défauts différents dans un `set` |
 | Vecteurs et matrices | Non utilisés | Le domaine n'a pas de données en grille |
 
 ### Unité 8 — Récursivité
@@ -125,7 +126,7 @@ Non utilisé. L'énoncé exclut les cartes de contrôle, et le tableau de bord d
 |---|---|---|
 | Recherche séquentielle | `ListaEnlazada.buscar` | O(n) |
 | Recherche dans un arbre équilibré (équivalente à la dichotomie) | `ArbolAVL.buscar` et `buscar_rango` | O(log n) garanti |
-| Recherche par clé dans un dictionnaire | `Lote.__contains__`, `Empresa.obtener_lote` | O(1) |
+| Recherche par clé dans un dictionnaire ou un ensemble (table de hachage) | `Lote.__contains__`, `Empresa.obtener_lote`, `Empresa._inspecciones_de_lote` (ensemble d'identifiants) | O(1) |
 | Tri | `sorted` (`Reporte`, `Profesional`), parcours infixe de l'AVL, extraction successive du tas | L'AVL renvoie les données déjà triées |
 | Algorithmes manuels (bulles, rapide, fusion) | Non implémentés | Ils n'apportent rien au domaine ; `sorted` et les structures trient déjà |
 
@@ -269,4 +270,5 @@ py -c "from datetime import date; from classes.empresa import Empresa; from clas
 - **Pourquoi JSON et pickle ?** JSON pour les rapports, que tout le monde doit pouvoir lire ; pickle pour reprendre l'entreprise complète avec ses objets et ses relations.
 - **Où est la récursivité ?** Dans toutes les opérations de l'AVL et dans les versions récursives de la liste chaînée (comparées aux versions itératives dans `main.py` 5.1). Elle remplit les 3 conditions : cas de base (`None` ou la clé trouvée), cas récursif (un sous-arbre) et progression (chaque appel descend d'un niveau).
 - **Pourquoi `App` hérite-t-elle de 6 classes ?** C'est de l'héritage multiple avec le patron *mixin* : chaque page de `front/paginas/` apporte ses méthodes et `App` les réunit. Aucune page ne répète un nom, donc le MRO n'a pas d'ambiguïté.
+- **Pourquoi `__eq__` et `__hash__` ensemble, et par identifiant ?** Si on définit seulement `__eq__`, Python annule `__hash__` et l'objet ne peut plus entrer dans un `set`. Ils reposent sur l'identifiant parce qu'il ne change jamais, donc `a == b` implique `hash(a) == hash(b)`. Cela permet de reconnaître une entité chargée avec pickle ou JSON et de manipuler des ensembles d'inspecteurs ou d'instruments.
 - **Comment l'IA a-t-elle été utilisée ?** C'est documenté dans le README (section 10) : ce qui a été généré, quelles erreurs elle a aidé à détecter et comment nous l'avons relu.
