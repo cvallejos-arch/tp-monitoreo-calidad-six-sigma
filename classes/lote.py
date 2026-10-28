@@ -1,14 +1,15 @@
+from classes.entidad import Entidad
 from classes.muestra import Muestra
 from classes.estado_lote import EstadoLote
 from classes.estado_muestra import EstadoMuestra
 from classes.validacion import validar_cantidad, validar_nombre_tecnico
-from classes.excepciones import TransicionIlegalError
+from classes.excepciones import TransicionIlegalError, DatosInvalidosError
 from classes.cola import Cola
 from classes.arbol_avl import ArbolAVL
 import uuid
 
 
-class Lote:
+class Lote(Entidad):
     # Estados en los que una muestra se considera cerrada (inspección finalizada).
     ESTADOS_FINALES = (EstadoMuestra.CONFORME, EstadoMuestra.NO_CONFORME)
 
@@ -191,6 +192,31 @@ class Lote:
                 conteo[defecto.tipo] = conteo.get(defecto.tipo, 0) + 1
 
         return conteo
+
+    # --- Conjuntos: tipos de defecto ---
+
+    def tipos_de_defecto(self):
+        """Conjunto (set) con los tipos de defecto de las muestras cerradas, sin repetir.
+        update() agrega al conjunto todos los elementos de un iterable."""
+        tipos = set()
+        for muestra in self._muestras_cerradas():
+            tipos.update(map(lambda d: d.tipo, muestra.defectos))
+        return tipos
+
+    def tipos_en_comun(self, otro):
+        """Tipos de defecto que aparecen en los DOS lotes (intersección, &)."""
+        return self.tipos_de_defecto() & self._validar_lote(otro).tipos_de_defecto()
+
+    def tipos_exclusivos(self, otro):
+        """Tipos de defecto que aparecen en UNO SOLO de los dos lotes
+        (diferencia simétrica, ^)."""
+        return self.tipos_de_defecto() ^ self._validar_lote(otro).tipos_de_defecto()
+
+    @staticmethod
+    def _validar_lote(otro):
+        if not isinstance(otro, Lote):
+            raise DatosInvalidosError(f"Se esperaba un Lote, recibido: {type(otro).__name__}")
+        return otro
 
     # --- Índices con árbol AVL (árboles: Unidad 7; recursión: Unidad 8) ---
 

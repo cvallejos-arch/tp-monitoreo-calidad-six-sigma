@@ -188,6 +188,34 @@ class Empresa:
             )
         )
 
+    # --- Conjuntos: quiénes y con qué se inspeccionó cada lote ---
+
+    def _inspecciones_de_lote(self, lote):
+        """Inspecciones de las muestras del lote. Los ids de sus muestras se guardan
+        en un set: preguntar `id in conjunto` usa el hash y no recorre nada (O(1))."""
+        ids_muestras = set(map(lambda m: m.id, lote.muestras))
+        return filter(lambda i: i.muestra_id in ids_muestras,
+                      self._registros["inspecciones"].values())
+
+    def profesionales_de_lote(self, lote):
+        """Conjunto de profesionales que inspeccionaron el lote, sin repetir.
+        Guardar Profesional en un set es posible gracias a __eq__ y __hash__ (Entidad)."""
+        profesionales = self._registros["profesionales"]
+        return set(map(lambda i: profesionales[i.profesional_id], self._inspecciones_de_lote(lote)))
+
+    def equipos_de_lote(self, lote):
+        """Conjunto de equipos usados en el lote (por ejemplo, para revisarlos si se rechazó)."""
+        equipos = self._registros["equipos"]
+        return set(map(lambda i: equipos[i.equipo_id], self._inspecciones_de_lote(lote)))
+
+    def profesionales_en_comun(self, lote_a, lote_b):
+        """Profesionales que inspeccionaron los DOS lotes (intersección, &)."""
+        return self.profesionales_de_lote(lote_a) & self.profesionales_de_lote(lote_b)
+
+    def profesionales_solo_en(self, lote_a, lote_b):
+        """Profesionales que inspeccionaron lote_a pero NO lote_b (diferencia, -)."""
+        return self.profesionales_de_lote(lote_a) - self.profesionales_de_lote(lote_b)
+
     # --- Índices con árbol AVL ---
 
     def arbol_lotes_por_produccion(self):

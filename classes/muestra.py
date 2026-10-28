@@ -1,3 +1,4 @@
+from classes.entidad import Entidad
 from classes.estado_muestra import EstadoMuestra
 from classes.validacion import validar_cantidad
 from classes.excepciones import TransicionIlegalError
@@ -6,7 +7,7 @@ from classes.pila import Pila
 import uuid
 
 
-class Muestra:
+class Muestra(Entidad):
     def __init__(self, cantidad, lote_id):
         self._id = uuid.uuid4()
         self._cantidad = validar_cantidad(cantidad)

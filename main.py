@@ -9,7 +9,7 @@ Secciones:
   2. Validaciones antes de inspeccionar
   3. Inspecciones del lote 1
   4. Reglas de cierre y decisión de los lotes
-  5. Estructuras de datos: recursión, árboles AVL y cola de prioridad (heap)
+  5. Estructuras de datos: recursión, árboles AVL, cola de prioridad (heap) y conjuntos
   6. Serialización (JSON y pickle)
   7. Simulación aleatoria con semilla
   8. Resumen final
@@ -406,6 +406,21 @@ def main():
              "Cola.put",
              lambda: cola_chica.put("C"))
 
+    subtitulo("5.9 Conjuntos: comparar los lotes 1 y 2")
+    # Profesional y Equipo se pueden guardar en un set gracias a __eq__ y __hash__
+    # por id (clase base Entidad). Los tipos de defecto son strings: hashables.
+    nombres = lambda conjunto: sorted(map(lambda p: p.nombre, conjunto))
+    print(f"Tipos de defecto del lote 1: {sorted(lote.tipos_de_defecto())} | "
+          f"del lote 2: {sorted(lote_2.tipos_de_defecto())}")
+    print(f"  En común (&): {lote.tipos_en_comun(lote_2)} | "
+          f"en uno solo (^): {lote.tipos_exclusivos(lote_2)}")
+    print(f"Inspeccionaron el lote 1: {nombres(empresa.profesionales_de_lote(lote))} | "
+          f"el lote 2: {nombres(empresa.profesionales_de_lote(lote_2))}")
+    print(f"  En los dos (&): {nombres(empresa.profesionales_en_comun(lote, lote_2))} | "
+          f"solo en el lote 2 (-): {nombres(empresa.profesionales_solo_en(lote_2, lote))}")
+    print(f"Equipos usados en el lote 2: {len(empresa.equipos_de_lote(lote_2))} "
+          f"(un set no repite el mismo equipo aunque se use en varias inspecciones)")
+
     # ============================================================
     #  6. SERIALIZACIÓN (JSON Y PICKLE)
     # ============================================================
@@ -418,6 +433,10 @@ def main():
     iguales = all(map(lambda par: par[0].to_dict() == par[1].to_dict(),
                       zip(empresa.reportes(), reportes_cargados)))
     print(f"Exportados {cantidad} reportes a '{ruta_json}' y cargados de vuelta. ¿Iguales? {iguales}")
+    # Con __eq__ y __hash__ por id, el reporte cargado (otro objeto, con el id como
+    # texto en el JSON) es la MISMA entidad que el original
+    print(f"¿Son el mismo conjunto de reportes? set(originales) == set(cargados): "
+          f"{set(empresa.reportes()) == set(reportes_cargados)}")
 
     subtitulo("pickle: la empresa completa, para retomar el trabajo")
     ruta_pkl = "empresa.pkl"
@@ -427,6 +446,8 @@ def main():
     print(f"Guardada en '{ruta_pkl}' y cargada. ¿Es otro objeto? {cargada is not empresa} | "
           f"¿Mismo contenido? {cargada.resumen() == empresa.resumen()}")
     print(f"La muestra 0 recuperada conserva su pila: {texto_historial(m0_cargada.historial_estados)}")
+    print(f"La muestra 0 recuperada: ¿es el mismo objeto? {m0_cargada is m0} | "
+          f"¿es la misma entidad (==, por id)? {m0_cargada == m0}")
     print(f"Y el índice AVL de equipos: {len(cargada.equipos_vencidos_al(fecha_hoy))} equipo vencido")
 
     ruta_invalida = "archivo_invalido.pkl"

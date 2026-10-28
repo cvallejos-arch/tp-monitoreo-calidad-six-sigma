@@ -1,5 +1,6 @@
 from datetime import date
 
+from classes.entidad import Entidad
 from classes.estado_muestra import EstadoMuestra
 from classes.excepciones import (
     CertificacionNoVigenteError,
@@ -12,7 +13,7 @@ from classes.excepciones import (
 import uuid
 
 
-class Inspeccion:
+class Inspeccion(Entidad):
 
 
     def __init__(self, muestra, profesional, equipo, procedimiento, fecha):

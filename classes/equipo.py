@@ -1,10 +1,11 @@
 import uuid
 from datetime import timedelta
 
+from classes.entidad import Entidad
 from classes.validacion import validar_fecha_tipo, validar_nombre_tecnico
 
 
-class Equipo:
+class Equipo(Entidad):
     # Una calibración vale 182 días (regla 4 de la consigna: "6 meses")
     DIAS_VALIDEZ_CALIBRACION = 182
 

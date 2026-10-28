@@ -1,11 +1,12 @@
 import uuid
 
+from classes.entidad import Entidad
 from classes.excepciones import DatosInvalidosError
 from classes.certificacion import Certificacion
 from classes.validacion import validar_texto
 
 
-class Profesional:
+class Profesional(Entidad):
     def __init__(self, nombre):
         self._id = uuid.uuid4()
         self._nombre = validar_texto(nombre, "nombre")

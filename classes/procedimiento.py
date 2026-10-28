@@ -1,12 +1,13 @@
 import uuid
 from abc import ABC, abstractmethod
 
+from classes.entidad import Entidad
 from classes.validacion import validar_entero, validar_nombre_tecnico
 from classes.excepciones import DatosInvalidosError
 from classes.defecto import Defecto
 
 
-class Procedimiento(ABC):
+class Procedimiento(Entidad, ABC):
     """Clase abstracta: define el contrato de toda inspección (límite de gravedad,
     requisitos de equipo y certificación) y exige implementar evaluar().
     No se puede instanciar directamente: solo sus subclases concretas."""

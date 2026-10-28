@@ -2,17 +2,20 @@ import uuid
 from datetime import date
 from functools import reduce
 
+from classes.entidad import Entidad
 from classes.defecto import Defecto
 from classes.estado_muestra import EstadoMuestra
 
 
-class Reporte:
+class Reporte(Entidad):
 
     def __init__(self, muestra_id, lote_id, profesional_id, fecha, defectos,
                  historial_estados=(), reporte_id=None):
         # reporte_id solo se indica al reconstruir un reporte guardado (from_dict);
         # un reporte nuevo genera su propio id.
-        self._id = reporte_id if reporte_id is not None else uuid.uuid4()
+        # Desde JSON el id llega como texto: se convierte a UUID para que el reporte
+        # cargado sea igual (==) y tenga el mismo hash que el original.
+        self._id = uuid.UUID(str(reporte_id)) if reporte_id is not None else uuid.uuid4()
         self._muestra_id = muestra_id
         self._lote_id = lote_id
         self._profesional_id = profesional_id
