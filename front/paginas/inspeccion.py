@@ -12,7 +12,9 @@ from classes.proc_visual import ProcedimientoVisual
 from classes.simulador import Simulador
 
 from front.estilos import AZUL, BLANCO, COLOR_ESTADO, FONDO_ESTADO, FUENTE, SUAVE, TEXTO
-from front.herramientas import Selector, boton, leer_decimal, leer_entero, leer_fecha, tarjeta
+from front.herramientas import (
+    Selector, boton, leer_decimal, leer_entero, leer_fecha, tarjeta, texto_estado,
+)
 
 
 class PaginaInspeccion:
@@ -284,7 +286,7 @@ class PaginaInspeccion:
         estado = muestra.estado.value
         fondo, color = FONDO_ESTADO[estado], COLOR_ESTADO[estado]
         self.resultado_marco.configure(bg=fondo)
-        self.resultado.configure(text=f"Muestra {estado.replace('_', ' ')}", fg=color, bg=fondo)
+        self.resultado.configure(text=f"Muestra {texto_estado(muestra.estado).lower()}", fg=color, bg=fondo)
         detalle = (f"{len(defectos)} defecto(s) · suma de gravedades {muestra.suma_gravedades()} "
                    f"(límite {proc.limite_gravedad_acumulada}) · "
                    f"{'con' if muestra.tiene_critico() else 'sin'} defecto crítico")

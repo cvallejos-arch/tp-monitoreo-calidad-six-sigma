@@ -15,7 +15,7 @@ from front.estilos import (
     FUENTE, LATERAL, LATERAL_ACTIVO, NARANJA, SUAVE, TEXTO,
     VERDE, aplicar_estilos,
 )
-from front.herramientas import PaginaDesplazable, boton, fecha_larga, id_corto
+from front.herramientas import PaginaDesplazable, boton, fecha_larga, id_corto, texto_estado
 from front.paginas.archivos import Archivos
 from front.paginas.inspeccion import PaginaInspeccion
 from front.paginas.lotes import PaginaLotes
@@ -214,12 +214,12 @@ class App(PaginaPanel, PaginaRegistro, PaginaInspeccion, PaginaLotes, PaginaRepo
         return tabla
 
     def _describir_muestra(self, m):
-        return f"Muestra {id_corto(m.id)} · {m.cantidad} u. · {m.estado.value}"
+        return f"Muestra {id_corto(m.id)} · {m.cantidad} u. · {texto_estado(m.estado)}"
 
     def refrescar(self):
         e = self.empresa
         hoy = date.today()
-        describir_lote = lambda l: f"{l.nombre_componentes} ({id_corto(l.id)}) · {l.estado.value}"
+        describir_lote = lambda l: f"{l.nombre_componentes} ({id_corto(l.id)}) · {texto_estado(l.estado)}"
         describir_prof = lambda p: (f"{p.nombre} ({id_corto(p.id)}) · certificaciones: "
                                     f"{', '.join(p.certificaciones) if p.certificaciones else 'ninguna'}")
         describir_equipo = lambda q: (f"{q.categoria} ({id_corto(q.id)}) · calibrado {q.fecha_calibracion}"
@@ -248,7 +248,7 @@ class App(PaginaPanel, PaginaRegistro, PaginaInspeccion, PaginaLotes, PaginaRepo
         self._lotes_por_fila = {}
         for lote in e.listar_lotes():
             fila = self.tabla_lotes.insert("", "end", tags=(lote.estado.value,), values=(
-                lote.nombre_componentes, lote.estado.value, lote.cantidad_fabricada,
+                lote.nombre_componentes, texto_estado(lote.estado), lote.cantidad_fabricada,
                 len(lote.muestras), len(lote.pendientes_en_orden()),
                 f"{lote.porcentaje_no_conforme():.1f}%", lote.total_defectos_criticos()))
             self._lotes_por_fila[fila] = lote

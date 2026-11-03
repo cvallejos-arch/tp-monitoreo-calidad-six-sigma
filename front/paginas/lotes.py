@@ -4,7 +4,7 @@ from tkinter import messagebox
 
 from front.estilos import AZUL, COLOR_ESTADO, FONDO_ESTADO, FUENTE, ROJO, SUAVE, TEXTO, VERDE
 from front.herramientas import (
-    Grafico, boton, id_corto, rectangulo_redondeado, tarjeta, texto_historial,
+    Grafico, boton, id_corto, rectangulo_redondeado, tarjeta, texto_estado, texto_historial,
 )
 from front.visualizaciones import barras_de_progreso, sin_datos
 
@@ -59,7 +59,7 @@ class PaginaLotes:
             return
         for m in lote.muestras:
             self.tabla_muestras.insert("", "end", tags=(m.estado.value,), values=(
-                id_corto(m.id), m.cantidad, m.estado.value, len(m.defectos),
+                id_corto(m.id), m.cantidad, texto_estado(m.estado), len(m.defectos),
                 m.suma_gravedades(), texto_historial(m.historial_estados)))
         self.detalle_lote.mostrar(self._dibujo_detalle_lote(lote))
 
@@ -80,10 +80,11 @@ class PaginaLotes:
         def dibujar(c, w, h):
             c.create_text(0, 10, text=lote.nombre_componentes, anchor="w", fill=TEXTO,
                           font=(FUENTE, 13, "bold"))
-            insignia = lote.estado.value
+            estado = lote.estado.value
+            insignia = texto_estado(lote.estado)
             ancho = 16 + len(insignia) * 7
-            rectangulo_redondeado(c, w - ancho, 0, w, 22, 11, fill=FONDO_ESTADO[insignia], outline="")
-            c.create_text(w - ancho / 2, 11, text=insignia, fill=COLOR_ESTADO[insignia],
+            rectangulo_redondeado(c, w - ancho, 0, w, 22, 11, fill=FONDO_ESTADO[estado], outline="")
+            c.create_text(w - ancho / 2, 11, text=insignia, fill=COLOR_ESTADO[estado],
                           font=(FUENTE, 8, "bold"))
             c.create_text(0, 32, anchor="w", fill=SUAVE, font=(FUENTE, 9),
                           text=f"{lote.cantidad_fabricada} unidades · {lote.total_defectos_criticos()} "
@@ -99,6 +100,6 @@ class PaginaLotes:
         estado = self._ejecutar(lote.decidir)
         if estado:
             messagebox.showinfo("Decisión del lote",
-                                f"Lote {estado.value}\n\n{lote.porcentaje_no_conforme():.1f}% de muestras "
+                                f"Lote {texto_estado(estado).lower()}\n\n{lote.porcentaje_no_conforme():.1f}% de muestras "
                                 f"no conformes (se rechaza si supera el 5%)")
-            self.estado.set(f"✔ Lote '{lote.nombre_componentes}' {estado.value}")
+            self.estado.set(f"✔ Lote '{lote.nombre_componentes}' {texto_estado(estado).lower()}")

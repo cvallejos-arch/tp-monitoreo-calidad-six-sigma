@@ -12,7 +12,7 @@ from front.estilos import (
     COLOR_GRAVEDAD, FONDO, FUENTE, NARANJA, ROJO, SUAVE,
     TEXTO, VERDE,
 )
-from front.herramientas import Grafico, id_corto, promedio, tarjeta
+from front.herramientas import Grafico, id_corto, promedio, tarjeta, texto_estado
 from front.visualizaciones import (
     barras_de_progreso, barras_horizontales, barras_verticales, dona, lista_con_insignias, sin_datos,
 )
@@ -172,5 +172,5 @@ class PaginaPanel:
             lote = e.obtener_lote(muestra.lote_id)
             filas.append((f"{lote.nombre_componentes} · muestra {id_corto(muestra.id)}",
                           f"{insp.fecha} · {len(insp.defectos)} defecto(s)",
-                          muestra.estado.value, COLOR_ESTADO[muestra.estado.value]))
+                            texto_estado(muestra.estado), COLOR_ESTADO[muestra.estado.value]))
         self.graficos["ultimas"].mostrar(lista_con_insignias(filas))

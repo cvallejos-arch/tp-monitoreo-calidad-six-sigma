@@ -44,8 +44,21 @@ def leer_decimal(texto, campo):
         raise DatosInvalidosError(f"El campo '{campo}' debe ser un número")
 
 
+# Cómo se muestra cada estado en pantalla (el dominio sigue usando EN_PRODUCCION, etc.)
+NOMBRES_ESTADO = {
+    "EN_PRODUCCION": "En producción", "APROBADO": "Aprobado", "RECHAZADO": "Rechazado",
+    "PENDIENTE": "Pendiente", "EN_INSPECCION": "En inspección",
+    "CONFORME": "Conforme", "NO_CONFORME": "No conforme",
+}
+
+
+def texto_estado(estado):
+    """Nombre legible de un estado de lote o de muestra."""
+    return NOMBRES_ESTADO.get(estado.value, estado.value)
+
+
 def texto_historial(historial):
-    return " → ".join(map(lambda e: e.value, historial))
+    return " → ".join(map(texto_estado, historial))
 
 
 def promedio(valores):
