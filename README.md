@@ -182,8 +182,6 @@ La consigna deja **fuera de alcance la interfaz gráfica y la persistencia**. La
 
 ## 9. Conceptos de la materia aplicados
 
-Resumen; el detalle de cada tema y subtema del programa, con el archivo, la clase, el método y el porqué, está en las guías [`DEFENSA_ORAL_ES.md`](DEFENSA_ORAL_ES.md) (y sus versiones en inglés y francés).
-
 | Unidad del programa | Dónde se aplica (ejemplos) |
 |---|---|
 | 1-2. Objetos y tipos de datos | `isinstance`, `is` frente a `==` (lo cargado con pickle no es el mismo objeto pero sí la misma entidad); tuplas para devolver datos inmutables; listas, diccionarios y strings (`isalpha`, `join`, f-strings) |
