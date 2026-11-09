@@ -4,10 +4,6 @@ Trabajo práctico de **Estructuras de Datos y Programación (ITBA)**. La consign
 
 **QuantumTech Precision** fabrica componentes en lotes. Hoy registra mediciones, calibraciones y defectos en documentos separados, y eso le permite usar equipos vencidos, cerrar lotes incompletos y emitir reportes que no explican el rechazo. Este prototipo coordina las inspecciones y decide la conformidad de muestras y lotes aplicando umbrales fijos: no hace estadística Six Sigma.
 
-**Guías para el oral** (cada tema del programa, dónde está en el código y por qué): [español](DEFENSA_ORAL_ES.md) · [English](DEFENSA_ORAL_EN.md) · [français](DEFENSA_ORAL_FR.md).
-
----
-
 ## 1. Cómo ejecutarlo
 
 Desde la carpeta del proyecto:
