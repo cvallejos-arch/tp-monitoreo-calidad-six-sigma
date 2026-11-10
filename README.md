@@ -32,7 +32,6 @@ py -m pytest -q       # 521 tests
 | `consola.py` | Interfaz por consola (`input()`). |
 | `main.py` | Demo guionada por consola. |
 | `tests/` | 521 tests con pytest: uno o más archivos por clase, más reglas de la consigna, índices, serialización, simulador y consola. |
-| `DEFENSA_ORAL_*.md` | Guías para el oral en español, inglés y francés. |
 
 Las tres interfaces están **separadas del dominio**, como pide la consigna: solo llaman a métodos públicos (nunca a atributos privados como `empresa._registros`), y las reglas se validan siempre dentro del dominio.
 
@@ -135,7 +134,69 @@ Las tres interfaces están **separadas del dominio**, como pide la consigna: sol
 
 ---
 
-## 6. Reglas de negocio: dónde se cumplen
+## 6. Árboles AVL y heap: qué resuelven y cómo funcionan
+
+La consigna no pide árboles ni heap. Los sumamos para aplicar las unidades 7 (estructuras de datos) y 8 (recursividad) en problemas reales del sistema: **consultas por rango de fechas** y **orden de atención de los reportes**.
+
+### Por qué un árbol
+
+Un diccionario busca por clave exacta en O(1), pero no sabe responder "todos los equipos calibrados entre dos fechas" sin recorrerlos todos. Un **árbol binario de búsqueda** guarda a la izquierda de cada nodo las claves menores y a la derecha las mayores, así que en una búsqueda por rango descarta ramas enteras y entrega los resultados ya ordenados.
+
+### Por qué AVL y no un árbol común
+
+Primero usamos un árbol binario de búsqueda común y apareció el problema: **las fechas llegan en orden**. Cada fecha nueva es mayor que la anterior y va siempre a la derecha, así que el árbol queda como una lista y buscar pasa a ser O(n).
+
+El **AVL** guarda la altura de cada nodo y controla que la diferencia entre el subárbol izquierdo y el derecho sea -1, 0 o 1. Si llega a 2, **rota**. Por ejemplo, al insertar 10, 20 y 30 hace una rotación a la izquierda y el 20 queda de raíz (`niveles()` da `[[20], [10, 30]]`). Así buscar, insertar, eliminar y buscar por rango cuestan **O(log n)**, lleguen como lleguen las claves.
+
+Todas las operaciones son **recursivas** (`_insertar_rec`, `_buscar_rec`, `_buscar_rango_rec`, etc.). El caso base es el subárbol vacío (`None`) y cada llamada baja por un solo lado, con un subárbol más chico. Al volver de la recursión, `_balancear` actualiza la altura y rota si hace falta.
+
+### Qué guarda cada nodo
+
+`NodoAVL` guarda la **clave** (por ejemplo, una fecha), una **lista de datos** con esa clave, las referencias a sus dos hijos y su **altura**.
+
+- **Claves repetidas:** a diferencia del árbol de la cátedra (donde un repetido no se agrega), acá el dato se suma al mismo nodo. Dos equipos calibrados el mismo día son dos equipos reales y no se puede perder ninguno. Un repetido no crea nodos, así que no cambia la altura ni provoca rotaciones.
+- **Referencias, no copias:** el nodo guarda los mismos objetos que están en los diccionarios de `Empresa`. El árbol es un índice extra, no reemplaza al registro.
+
+### Dónde se usa
+
+| Índice | Clave | Para qué | Cuánto vive |
+|---|---|---|---|
+| Equipos por calibración (`Empresa`) | fecha de calibración | Equipos vencidos a una fecha, los que vencen en los próximos N días y el que vence primero | **Permanente:** cada equipo se inserta al registrarlo |
+| Reportes por fecha (`Empresa.reportes_entre`) | fecha del reporte | Reportes de un período; además da el orden de llegada al heap | Se arma en cada consulta |
+| Lotes por producción (`Empresa.arbol_lotes_por_produccion`) | cantidad fabricada | Lotes ordenados por volumen (panel de la interfaz) | Se arma en cada consulta |
+| Defectos por gravedad (`Lote.arbol_defectos_por_gravedad`) | gravedad (1 a 5) | Agrupar los defectos del lote; los críticos con `buscar(5)` | Se arma en cada consulta |
+| Muestras por cantidad (`Lote.arbol_muestras_por_cantidad`) | cantidad de unidades | Muestras del lote ordenadas | Se arma en cada consulta |
+
+**Vencimiento convertido en rango:** un equipo vale 182 días, así que "vencidos al día X" equivale a "calibrados hasta X − 183 días", y "vencen entre A y B" equivale a "calibrados entre A − 182 y B − 182". Por eso el árbol se ordena por fecha de calibración y cada consulta es un `buscar_rango`.
+
+**Permanente o temporal:**
+- El árbol de equipos es un **atributo de `Empresa`**: se actualiza al registrar y se guarda con pickle. Se puede mantener porque los equipos siempre se crean por `Empresa` y su fecha de calibración no cambia (no tiene setter), así que el índice nunca queda desactualizado.
+- Los demás se arman **dentro del método** como variable local. Se usa el árbol, se devuelve el resultado y Python libera el árbol cuando ninguna variable lo referencia; los objetos siguen en el registro. Los reportes los crea la `Muestra` al cerrarse, no la `Empresa`, así que no hay un único lugar donde insertarlos. Armar un árbol para una sola consulta cuesta O(n log n), lo mismo que un `sorted`: ahí el árbol se usa como herramienta para ordenar y filtrar por rango, no como índice.
+
+### Por qué un heap para los reportes
+
+Una cola común (FIFO) atendería primero al reporte más viejo, pero un defecto crítico no puede esperar detrás de varias rayaduras leves. `ColaPrioridad` es un **max-heap**: siempre sale primero el de mayor prioridad, como en una sala de urgencias.
+
+- **Prioridad:** la tupla `(gravedad máxima, suma de gravedades)` de cada reporte. Las tuplas se comparan elemento a elemento: primero decide el defecto más grave y, si empatan, la suma. Por ejemplo, `(5, 5)` sale antes que `(4, 12)`.
+- **Empates:** cada elemento guarda su número de llegada y, a igual prioridad, sale primero el que llegó antes. Como `cola_atencion_reportes` inserta los reportes en orden de fecha (recorrido in-orden del AVL de reportes), en un empate se atiende primero el más antiguo.
+- **Cómo está guardado:** un árbol binario **completo** en una lista, sin nodos: el padre de `i` está en `(i - 1) // 2` y sus hijos en `2i + 1` y `2i + 2`. Cada padre es mayor o igual que sus hijos, así que el máximo está siempre en el índice 0.
+- **Operaciones:** `insertar` agrega al final y el elemento **sube** mientras sea mayor que su padre; `extraer_maximo` pasa el último a la raíz y lo hace **bajar** por el hijo mayor. Las dos cuestan **O(log n)** y `ver_maximo` cuesta O(1).
+- **Dónde se ve:** columna *Turno* de la página de reportes, opción 15 de la consola y sección 5 de `main.py`.
+
+### AVL frente a heap
+
+| | Árbol AVL | Heap |
+|---|---|---|
+| Pregunta que responde | "Todos entre A y B, en orden" | "¿Cuál es el más importante ahora?" |
+| Orden interno | Total: el recorrido in-orden da todo ordenado | Parcial: solo garantiza el máximo arriba |
+| Estructura | Nodos con referencias y rotaciones | Lista con índices, siempre completa |
+| En el TP | Equipos, reportes, lotes y defectos | Orden de atención de los reportes |
+
+Se usan juntos: el AVL filtra los reportes por período y los entrega en orden de fecha, y el heap decide el orden de atención.
+
+---
+
+## 7. Reglas de negocio: dónde se cumplen
 
 | # | Regla | Dónde | Tests |
 |---|---|---|---|
@@ -154,7 +215,7 @@ Las tres interfaces están **separadas del dominio**, como pide la consigna: sol
 
 ---
 
-## 7. Decisiones de diseño
+## 8. Decisiones de diseño
 
 - **¿Cómo reciben los procedimientos observaciones distintas sin exponer la muestra?** Cada procedimiento recibe sus propios objetos de observación y devuelve una lista de defectos. Nunca toca la muestra: es la `Inspeccion` la que agrega los defectos.
 - **¿Quién valida todo antes de iniciar?** El constructor de `Inspeccion`. Si una validación falla, la excepción se lanza **antes** de cambiar el estado.
@@ -162,7 +223,7 @@ Las tres interfaces están **separadas del dominio**, como pide la consigna: sol
 - **¿La conformidad se guarda o se calcula?** Se calcula a partir de los defectos al cerrar y se guarda como estado final; después del cierre no se pueden agregar defectos, así que no puede haber contradicción.
 - **¿Cómo se copia el reporte?** `Reporte` guarda una tupla con `copia()` de cada defecto; cada subclase redefine `copia()` para conservar sus datos propios.
 - **¿Dónde se decide el lote?** En `Lote.decidir()`, que solo mira el estado de las muestras; agregar un procedimiento nuevo no la afecta.
-- **¿Por qué un AVL y no un árbol de búsqueda común?** Las fechas de calibración y de reportes llegan en orden, que es el peor caso de un árbol sin balance (queda como una lista y buscar es O(n)). El AVL se rebalancea con rotaciones y garantiza O(log n). El índice de equipos se mantiene al día porque los equipos siempre se crean por `Empresa`; el de reportes se arma al consultar, porque los reportes los crea la `Muestra` al cerrarse.
+- **¿Por qué un AVL y no un árbol de búsqueda común?** (Detalle en la sección 6.) Las fechas de calibración y de reportes llegan en orden, que es el peor caso de un árbol sin balance (queda como una lista y buscar es O(n)). El AVL se rebalancea con rotaciones y garantiza O(log n). El índice de equipos se mantiene al día porque los equipos siempre se crean por `Empresa`; el de reportes se arma al consultar, porque los reportes los crea la `Muestra` al cerrarse.
 - **¿Por qué una cola de prioridad para los reportes?** Hay que atender primero al más grave, no al que llegó antes. La prioridad es la tupla (gravedad máxima, suma de gravedades) y los empates salen por orden de llegada.
 - **¿Dónde va el azar?** Solo en `Simulador`, nunca en el dominio; los tests usan semillas fijas.
 - **¿Cuándo dos entidades son iguales?** Cuando tienen el mismo id (clase base `Entidad`). Si se define `__eq__`, Python anula el `__hash__` heredado, así que se definen los dos juntos y sobre el id, que es inmutable. Así `set(reportes) == set(reportes_cargados_del_json)` y una empresa cargada con pickle sigue reconociendo sus objetos. `Defecto` queda fuera a propósito: compararlo por valor fusionaría defectos distintos en un `set`.
@@ -170,7 +231,7 @@ Las tres interfaces están **separadas del dominio**, como pide la consigna: sol
 
 ---
 
-## 8. Extensiones (fuera de lo que pide la consigna)
+## 9. Extensiones (fuera de lo que pide la consigna)
 
 La consigna deja **fuera de alcance la interfaz gráfica y la persistencia**. Las sumamos para aplicar temas de la materia, sin cambiar ninguna regla:
 - **Serialización:** JSON para los reportes (legible, no depende de Python: `to_dict()` + `json.dump`, y `Clase(**data)` al cargar) y pickle para la empresa completa (retomar el trabajo donde quedó).
@@ -180,7 +241,9 @@ La consigna deja **fuera de alcance la interfaz gráfica y la persistencia**. La
 
 ---
 
-## 9. Conceptos de la materia aplicados
+## 10. Conceptos de la materia aplicados
+
+Cada unidad del programa, con ejemplos de dónde se aplica. Los árboles, el heap y la recursión están explicados en detalle en la [sección 6](#6-árboles-avl-y-heap-qué-resuelven-y-cómo-funcionan).
 
 | Unidad del programa | Dónde se aplica (ejemplos) |
 |---|---|
@@ -195,7 +258,7 @@ La consigna deja **fuera de alcance la interfaz gráfica y la persistencia**. La
 
 ---
 
-## 10. Uso de IA
+## 11. Uso de IA
 
 El modelo de dominio, las clases base y los tests iniciales los construimos nosotros. Después usamos Claude (Claude Code) para revisar el código y aplicar los conceptos teóricos en los lugares que correspondía.
 
@@ -205,7 +268,7 @@ El modelo de dominio, las clases base y los tests iniciales los construimos noso
 - la serialización con JSON y pickle;
 - `Nodo`, `ListaEnlazada`, el árbol AVL, la cola de prioridad y los conjuntos (`Entidad` y las operaciones con `set`);
 - buena parte de los tests nuevos;
-- la reorganización de `main.py`, este README y las guías `DEFENSA_ORAL`.
+- la reorganización de `main.py`, este README y las guías que usamos para preparar el oral.
 
 Después los revisamos, los adaptamos al resto del sistema y los probamos con `pytest`.
 
@@ -220,7 +283,6 @@ Después los revisamos, los adaptamos al resto del sistema y los probamos con `p
 - En la interfaz: crear muestras que no entraban dejaba creadas solo algunas; se podía inspeccionar sin observaciones; al fallar la exportación se mostraba "None"; dos profesionales con el mismo nombre no se distinguían.
 - El árbol binario de búsqueda inicial se degeneraba en una lista con claves repetidas u ordenadas; se reemplazó por un AVL.
 - Al cargar un reporte desde JSON, su id volvía como texto en lugar de `UUID`: con `__eq__` por id, el reporte cargado no habría sido igual al original. Se convierte al reconstruirlo.
-- La guía de defensa anterior tenía ejemplos de código que fallaban (métodos inexistentes y argumentos mal pasados); se rehízo verificando cada ejemplo.
 
 **Dónde aplicar los conceptos teóricos**
 - Reemplazar bucles por `map`, `filter` y `lambda`, sin usar `map` solo para provocar efectos.
